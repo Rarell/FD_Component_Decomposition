@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Nov  6 11:11:52 2019
+Created on Wed Nov 6 11:11:52 2019
 
-@author: Rarrell
+@author: Rarrell/Rarell (Stuart Edris)
 
-This script is designed to take the daily ESR NARR file calculate the ESR 
-  and SESR climatologies, including the mean, standard deviation, and 
-  quantiles for ESR and SESR.
+This script is designed to take the daily ESR NARR file and calculate the ESR
+  (evaporative stress ration; evapotranspiration divided by potential 
+  evaportanspiration) and SESR (standardized esr) climatologies, including 
+  the mean, standard deviation, and quantiles for ESR and SESR. The calculated
+  data will be written for easier and future use.
 """
 
 #%% 
@@ -31,12 +33,9 @@ from matplotlib.ticker import MultipleLocator
 
 #%% 
 # cell 2
-  # Examine the files
+# Examine the files
 
-########
-#### Hard coded path. Should change. ######
-#########
-path = '/Volumes/My Book/'
+path = './Data/'
 
 print(Dataset(path + 'esr_narr.nc', 'r'))
 print(Dataset(path + 'lat_narr.nc', 'r'))
@@ -45,9 +44,20 @@ print(Dataset(path + 'sesr_narr.nc', 'r'))
 
 #%% 
 # cell 3
-  # Function to load the files
-def load2Dnc(filename, SName, path = '/Volumes/My Book/'):
+# Function to load the files
+def load2Dnc(filename, SName, path = './Data/'):
     '''
+    This function loads 2 dimensional .nc files (e.g., the lat or lon files/
+    only spatial files). Function is simple as these files only contain the raw data.
+    
+    Inputs:
+    - filename: The filename of the .nc file to be loaded.
+    - SName: The short name of the variable in the .nc file (i.e., the name to
+             call when loading the data)
+    - Path: The path from the present direction to the directory the file is in.
+    
+    Outputs:
+    - var: The main variable in the .nc file.
     '''
     
     with Dataset(path + filename, 'r') as nc:
@@ -55,8 +65,20 @@ def load2Dnc(filename, SName, path = '/Volumes/My Book/'):
         
     return var
 
-def load3Dnc(filename, SName, path = '/Volumes/My Book/'):
+def load3Dnc(filename, SName, path = './Data/'):
     '''
+    This function loads 3 dimensional .nc files (with space and time/e.g., the
+    esr data). Function is simple as these files only contain the raw data.
+    
+    
+    Inputs:
+    - filename: The filename of the .nc file to be loaded.
+    - SName: The short name of the variable in the .nc file (i.e., the name to
+             call when loading the data)
+    - Path: The path from the present direction to the directory the file is in.
+    
+    Outputs:
+    - var: The main variable in the .nc file.
     '''
     
     with Dataset(path + filename, 'r') as nc:
@@ -66,10 +88,27 @@ def load3Dnc(filename, SName, path = '/Volumes/My Book/'):
 
 #%% 
 # cell 4
-  # Calculate the climatological means and standard deviations
+# Calculate the climatological means and standard deviations
   
 def CalculateClimatology(var, pentad = False):
     '''
+    The function takes in a 3 dimensional variable (2 dimensional space and time)
+    and calculates climatological values (mean and standard deviation) for each
+    grid point and day in the year.
+    
+    Inputs:
+    - var: 3 dimensional variable whose mean and standard deviation will be
+           calculated.
+    - pentad: Boolean (True/False) value giving if the time scale of var is 
+              pentad (5 day average) or daily.
+              
+    Outputs:
+    - ClimMean: Calculated mean of var for each day/pentad and grid point. 
+                ClimMean as the same spatial dimensions as var and 365 (73)
+                temporal dimension for daily (pentad) data.
+    - ClimStd: Calculated standard deviation for each day/pentad and grid point.
+               ClimStd as the same spatial dimensions as var and 365 (73)
+               temporal dimension for daily (pentad) data.
     '''
     
     # Obtain the dimensions of the variable
@@ -111,7 +150,7 @@ def CalculateClimatology(var, pentad = False):
 
 #%% 
 # cell 5
-  # Create functions to create datetime datasets
+# Create functions to create datetime datasets
 
 def DateRange(StartDate, EndDate):
     '''
@@ -119,21 +158,38 @@ def DateRange(StartDate, EndDate):
     those two dates.
     
     Inputs:
-        StartDate - A datetime. The starting date of the interval.
-        EndDate - A datetime. The ending date of the interval.
+    - StartDate: A datetime. The starting date of the interval.
+    - EndDate: A datetime. The ending date of the interval.
         
     Outputs:
-        All dates between StartDate and EndDate (inclusive)
+    - All dates between StartDate and EndDate (inclusive)
     '''
     for n in range(int((EndDate - StartDate).days) + 1):
         yield StartDate + timedelta(n) 
 
 #%%
 # cell 6
-  # Create a function to write a variable to a .nc file
+# Create a function to write a variable to a .nc file
   
 def WriteNC(var, lat, lon, dates, filename = 'tmp.nc', VarName = 'tmp'):
     '''
+    This function writes the 3 dimensionsal data in var into a .nc file. The
+    .nc file also contains the latitude and longitude information and dates for
+    each time step (in a string with a %Y-%m-%d format).
+    
+    Input:
+    - var: The 3 dimensional (2 spatial and time) data to be written.
+    - lat: The latitude (2 dimensional) data for each grid point in var.
+    - lon: The longitude (2 dimensional) data for each grid point in var.
+    - dates: String of dates (%Y-%m-%d format) for each time step in var.
+    - filename: The filename of the .nc file to be written.
+    - VarName: The variable name of the main variable for .nc file to be written.
+               I.e., what to call to get the main variable for the .nc file being
+               written.
+    
+    Outputs:
+    - None. Data is writen the path indicated below with the name specified in
+      filename.
     '''
     
     # Define the path
@@ -150,9 +206,8 @@ def WriteNC(var, lat, lon, dates, filename = 'tmp.nc', VarName = 'tmp'):
                          'These files contain the daily mean and standard ' +\
                          'deviation of ESR, daily SESR, daily change in SESR ' +\
                          'and daily mean and standard deviation of the change ' +\
-                         'in SESR. Note all these variables are unitless. Also '+\
-                         'note that all these variables are on a 1 degree '+\
-                         'x 1 degree GFS grid. The variable this file contains ' +\
+                         'in SESR. Note all these variables are unitless. ' +\
+                         'The variable this file contains ' +\
                          'is ' + str(VarName) + '.\n' +\
                          'Variable: ' + str(VarName) + ' (unitless). This is the ' +\
                          'main variable for this file. It is in the format ' +\
@@ -171,26 +226,26 @@ def WriteNC(var, lat, lon, dates, filename = 'tmp.nc', VarName = 'tmp'):
         nc.createDimension('lon', size = I)
         nc.createDimension('time', size = T)
         
-        # Create the lat and lon variables
+        # Create and write the lat and lon variables
         nc.createVariable('lat', lat.dtype, ('lat', 'lon'))
         nc.createVariable('lon', lon.dtype, ('lat', 'lon'))
         
         nc.variables['lat'][:,:] = lat[:,:]
         nc.variables['lon'][:,:] = lon[:,:]
         
-        # Create the date variable
+        # Create and write the date variable
         nc.createVariable('date', str, ('time', ))
         for n in range(len(dates)):
             nc.variables['date'][n] = np.str(dates[n])
             
-        # Create the main variable
+        # Create and write the main variable
         nc.createVariable(VarName, var.dtype, ('lat', 'lon', 'time'))
         nc.variables[str(VarName)][:,:,:] = var[:,:,:]
         
 
 #%%
 # cell 7
-  # Load the files
+# Load the files
   
 TMPesr = load3Dnc('esr_narr.nc', 'esr') # Dataset is time x lat x lon
 lat = load2Dnc('lat_narr.nc', 'lat') # Dataset is lat x lon
@@ -202,7 +257,8 @@ print(lon)
 
 #%%
 # cell 8
-  # Turn positive lon values to negative and see if this improves the map.
+# Turn positive lon values to negative (positive values are a sign error and 
+#   distort maps).
   
 for i in range(len(lon[:,0])):
     ind = np.where( lon[i,:] > 0 )[0]
@@ -216,7 +272,7 @@ for t in range(T):
     
 #%%
 # cell 9
-  # Create a sample plot of ESR to see what the map/grid looks like
+# Create a sample plot of ESR to see what the map/grid looks like
 
 # Lonitude and latitude tick information
 lat_int = 15
@@ -269,12 +325,12 @@ plt.show(block = False)
 
 #%%
 # cell 10
-  # Calculate the climatologies and test/examine by plotting a map for June 30
+# Calculate the climatologies and test/examine by plotting a map for June 30
   
 esr_mean, esr_std = CalculateClimatology(esr)
 
 # Reuse the same color map, labels, and projections as the first map on lines
-#   274 - 292
+#   284 - 292
 
 data_proj = ccrs.PlateCarree()
 fig_proj  = ccrs.PlateCarree()
@@ -308,7 +364,9 @@ ax.set_extent([np.nanmin(lon), np.nanmax(lon), np.nanmin(lat), np.nanmax(lat)],
 plt.show(block = False)  
 #%%
 # cell 11
-  # Calculate SESR
+# Calculate SESR
+
+# Initialize variables
 sesr = np.ones((esr.shape)) * np.nan
 climate_days = np.arange(1, 365+1)
 NumYear = int(np.ceil(sesr.shape[-1]/365))
@@ -337,7 +395,7 @@ for day in climate_days:
 
 #%%
 # cell 12
-  # Make an example plot of SESR
+# Make an example plot of SESR
 
 # Colorbar information
 cmin = -3.0; cmax = 3.0; cint = 0.20
@@ -378,21 +436,21 @@ ax.set_extent([np.nanmin(lon), np.nanmax(lon), np.nanmin(lat), np.nanmax(lat)],
 plt.show(block = False)
 #%%
 # cell 13
-  # Calculate the change in SESR
+# Calculate the change in SESR
   
 delta_sesr = sesr[:,:,1:] - sesr[:,:,:-1]
   
 #%%
 # cell 14
-  # Calculate the climatology in the change in SESR
+# Calculate the climatology in the change in SESR
   
 delta_sesr_mean, delta_sesr_std = CalculateClimatology(delta_sesr)
 
 #%%
 # cell 15
-  # Write two sets of datetime variables. One for sesr and delta_sesr (every day)
-  #   date from the start point to the end point.
-  # The other is for the climatologies and goes from Jan 01 to Dec 31
+# Write two sets of datetime variables. One for sesr and delta_sesr (every day)
+#   date from the start point to the end point.
+#   The other is for the climatologies and goes from Jan 01 to Dec 31
   
 narr_start = datetime(1979, 1, 1)
 narr_end   = datetime(2016, 12, 31)
@@ -420,8 +478,8 @@ for day in year_dates_gen:
 
 #%%
 # cell 16
-  # Write a .nc file for a ESR climatology, change in SESR, and change in SESR
-  #   climatology
+# Write a .nc file for a ESR climatology, change in SESR, and change in SESR
+#   climatology
   
 # Write the ESR climatology files
 WriteNC(esr_mean, lat, lon, year_dates, 'esr_climatology_mean.nc',
@@ -446,7 +504,7 @@ WriteNC(delta_sesr_std, lat, lon, year_dates, 'delta_sesr_climatology_std.nc',
 
 #%%
 # cell 17
-  # Print the datasets and see if everything seems to have been made properly
+# Print the datasets and see if everything seems to have been made properly
 
 path = './Data/SESR_Climatology/'
 print(Dataset(path + 'esr_climatology_mean.nc', 'r'))
@@ -459,7 +517,7 @@ print(Dataset(path + 'delta_sesr_climatology_std.nc', 'r'))
 
 #%%
 # cell 18
-  # Test the calculated SESR to the already given SESR pentad
+# Test the calculated SESR to the already given SESR pentad
 
 # Find and load the given sesr pentad data
 sesrPentad = load3Dnc('sesr_narr.nc', 'sesr')
@@ -492,12 +550,12 @@ ax.set_extent([np.nanmin(lon), np.nanmax(lon), np.nanmin(lat), np.nanmax(lat)],
 
 #%%
 # cell 19
-  # Create the date data
+# Create the pentad date data
 
 pentad_dates = ['tmp'] * sesrPentad.shape[0]
 n = 0
 m = 5
-narr_dates_gen = DateRange(narr_start, narr_end) # Note that this has to be redone for every loop
+narr_dates_gen = DateRange(narr_start, narr_end) # Note that this date generator has to be remade for every loop
 for date in narr_dates_gen:
     if date.strftime('%m-%d') == '02-29': # Exclude leap years
         pass
@@ -508,16 +566,16 @@ for date in narr_dates_gen:
         n = n + 1
         m = 0
 
-# Print the pentad dates to ensure they came out correctly.
+# Examine the pentad dates to ensure they were calculated correctly.
 print(pentad_dates)
     
 #%%
 # cell 20
-  # Create a plot for Iowa from May to August (the output of pentad
-  # and daily can be compared to Fig. 6a in Christian et al. 2019 to
-  # check for correctness)
+# Create a plot for Iowa from May to August (the output of pentad
+#   and daily can be compared to Fig. 6a in Christian et al. 2019 to
+#   check for correctness)
 
-#### NOTE: This cell needs to be reworked and tested now that lat and lon are no longer vecors ####
+#### NOTE: This cell needs to be reworked and tested now that lat and lon are 2D matrices and no longer vecors ####
 
 dateFMT = DateFormatter('%m-%d')
 
@@ -576,7 +634,7 @@ plt.show(block = False)
 
 #%%
 # cell 21
-  # Calculate pentads to compare to the given values
+# Calculate pentads to compare to the given values
 
 pentadTest = np.ones((sesrPentad.shape)) * np.nan
 
@@ -614,9 +672,9 @@ ax.set_extent([np.nanmin(lon), np.nanmax(lon), np.nanmin(lat), np.nanmax(lat)],
 
 #%%
 # cell 22
-  # Plot the test pentad to see how it compares to the given
+# Plot the test pentad to see how it compares to the given
 
-#### NOTE: This cell needs to be reworked and tested now that lat and lon are no longer vecors ####
+#### NOTE: This cell needs to be reworked and tested now that lat and lon are 2D matrices and no longer vecors ####
 
 # Create some temporary variables that has latitudinally averaged values
 testtmp   = np.nanmean(pentadTest[lonind,:,:], axis = 0)
@@ -656,7 +714,7 @@ plt.show(block = False)
 
 #%%
 # cell 23
-  # There pentads will be used in criteria 3 and 4, so calculated dsesr for pentads, and climatologies
+# The pentads will be used in criteria 3 and 4, so calculated dsesr for pentads, and climatologies
 
 # Turn esr into a lat x lon x time variable.
 T, I, J = pentadTest.shape
@@ -686,7 +744,7 @@ for date in pentad_year_gen:
 
 #%%
 # cell 24
-  # Write the pentad sesr, dsesr, and dsesr climatologies to .nc files
+# Write the pentad sesr, dsesr, and dsesr climatologies to .nc files
 
 # Write the SESR pentad file
 WriteNC(sesrTest, lat, lon, pentad_dates, 'GFS_grid_sesr_pentad.nc',
@@ -705,7 +763,8 @@ WriteNC(dsesr_pentad_std, lat, lon, pentad_year, 'delta_sesr_climatology_std_pen
 
 #%%
 # cell 25
-  # Calculate pentads in esr, then sesr to see if this changes things
+# Calculate pentads in esr, then sesr to see if this changes things
+
 ESRpentadTest = np.ones((I, J, T)) * np.nan
 
 n = 0
@@ -745,9 +804,9 @@ for day in climate_days:
         
 #%%
 # cell 26
- # plot the test SESR with given sesr pentad
+# plot the test SESR with given sesr pentad
         
-#### NOTE: This cell needs to be reworked and tested now that lat and lon are no longer vecors ####
+#### NOTE: This cell needs to be reworked and tested now that lat and lon are 2D matrices and no longer vecors ####
 
 # Create some temporary variables that has latitudinally averaged values
 testtmp   = np.nanmean(sesrTest[lonind,:,:], axis = 0)
