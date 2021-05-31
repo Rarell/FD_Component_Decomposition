@@ -5,7 +5,12 @@ Created on Wed Dec 18 16:58:03 2019
 
 @author: stuartedris
 
-
+This script is designed to take SESR data from the North American Regional 
+Renalysis dataset (NARR) and identify flash drought at every grid point in the
+U.S. and for each pentad using the method detailed in Christian et al. (2019).
+The identification of each criteria, flash drought identified, and some general
+drought information using SESR are all written as .nc files for analysis
+when their calculations are completed.
 """
 
 
@@ -30,7 +35,7 @@ from matplotlib.ticker import MultipleLocator
 
 #%%
 # cell 2
-  # Name some user defined variables to change for the GFS forecast date and model run
+# Name some user defined variables
 
 esrmFN       = 'esr_climatology_mean.nc'
 esrstdFN     = 'esr_climatology_std.nc'
@@ -51,7 +56,7 @@ OutPath = './Figures/'
 
 #%%
 # cell 3
-  # Examine the .nc files
+# Examine the .nc files
 
 # Examine climatology values
 print(Dataset('./Data/SESR_Climatology/esr_climatology_mean.nc', 'r'))
@@ -64,16 +69,36 @@ print(Dataset('./Data/SESR_Climatology/delta_sesr_climatology_std.nc', 'r'))
 
 #%%
 # cell 4
-  # Create a function to import the climatology and annual data
-def load_climatology(SName, file, path = './Data/SESR_Climatology_NARR_grid/'):
-    '''
+# Create a function to import the climatology and annual data
 
+def load_climatology(SName, filename, path = './Data/SESR_Climatology_NARR_grid/'):
+    '''
+    This function loads climatological .nc files. This function takes in the
+    name of the data, and short name of the variable to load the .nc file. Note
+    this function is differentiated the laod_full_climatology in that the data
+    it loads has an entry for each pentad in a year (i.e., 1 year of data),
+    characteristic of a climatological mean and standard deviation dataset.
+    
+    Inputs:
+    - SName: The short name of the variable being loaded. I.e., the name used
+             to call the variable in the .nc file.
+    - filename: The name of the .nc file.
+    - path: The path from the current directory to the directory the .nc file is in.
+    
+    Outputs:
+    - X: A directory containing all the data loaded from the .nc file. The 
+         entry 'lat' contains latitude (space dimensions), 'lon' contains longitude
+         (space dimensions), 'date' contains the dates in a datetime variable
+         (time dimension), 'month' 'day' are the numerical month
+         and day value for the given time (time dimension), 'ymd' contains full
+         datetime values, and 'SName' contains the variable (space and time demsions).
     '''
     
+    # Initialize the directory to contain the data
     X = {}
     DateFormat = '%m-%d'
     
-    with Dataset(path + file, 'r') as nc:
+    with Dataset(path + filename, 'r') as nc:
         # Load the grid
         lat = nc.variables['lat'][:,:]
         lon = nc.variables['lon'][:,:]
@@ -102,15 +127,33 @@ def load_climatology(SName, file, path = './Data/SESR_Climatology_NARR_grid/'):
 #%%
 # cell 5
   # Create a function to import the climatology and annual data
-def load_full_climatology(SName, file, path = './Data/SESR_Climatology_NARR_grid/'):
+def load_full_climatology(SName, filename, path = './Data/SESR_Climatology_NARR_grid/'):
     '''
-
+    This function loads full .nc files. This function takes in the
+    name of the data, and short name of the variable to load the .nc file. Note
+    this function is differentiated the laod_climatology in that the data this
+    function loads has an entry for each pentad in the full 40 year dataset.
+    
+    Inputs:
+    - SName: The short name of the variable being loaded. I.e., the name used
+             to call the variable in the .nc file.
+    - filename: The name of the .nc file.
+    - path: The path from the current directory to the directory the .nc file is in.
+    
+    Outputs:
+    - X: A directory containing all the data loaded from the .nc file. The 
+         entry 'lat' contains latitude (space dimensions), 'lon' contains longitude
+         (space dimensions), 'date' contains the dates in a datetime variable
+         (time dimension), 'month' 'day' are the numerical month
+         and day value for the given time (time dimension), 'ymd' contains full
+         datetime values, and 'SName' contains the variable (space and time demsions).
     '''
     
+    # Initialize the directory to contain the data
     X = {}
     DateFormat = '%Y-%m-%d'
     
-    with Dataset(path + file, 'r') as nc:
+    with Dataset(path + filename, 'r') as nc:
         # Load the grid
         lat = nc.variables['lat'][:,:]
         lon = nc.variables['lon'][:,:]
@@ -144,12 +187,27 @@ def load_full_climatology(SName, file, path = './Data/SESR_Climatology_NARR_grid
   
 def WriteNC(var, lat, lon, dates, filename = 'tmp.nc', VarName = 'tmp', VarSName = 'tmp'):
     '''
+    This function is deisgned write data, and additional information such as
+    latitude and longitude and timestamps to a .nc file.
+    
+    Inputs:
+    - var: The variable being written (lat x lon x time format).
+    - lat: The latitude data with the same spatial grid as var.
+    - lon: The longitude data with the same spatial grid as var.
+    - dates: The timestamp for each pentad in var in a %Y-%m-%d format, same time grid as var.
+    - filename: The filename of the .nc file being written.
+    - VarName: The full name of the variable being written (for the nc description).
+    - VarSName: The short name of the variable being written. I.e., the name used
+                to call the variable in the .nc file.
+                
+    Outputs:
+    - None. Data is written to a .nc file.
     '''
     
     # Define the path
     path = './Data/pentad_NARR_grid/'
     
-     # Determine the spatial and temporal lengths
+    # Determine the spatial and temporal lengths
     I, J, T = var.shape
     T = len(dates)
     
@@ -161,16 +219,16 @@ def WriteNC(var, lat, lon, dates, filename = 'tmp.nc', VarName = 'tmp', VarSName
                          'for the meaning of each criteria). The file FD contains ' +\
                          'the flash drought identified by all four criteria. These files ' +\
                          'contain the identified flash drought/criteria for all days within ' +\
-                         'the 1979 to 2016 time range and for all grid points in the NARR. ' +\
+                         'the 1979 to 2019 time range and for all grid points in the NARR. ' +\
                          'This file contains ' + str(VarName) + '.\n' +\
                          'Variable: ' + str(VarSName) + ' (unitless). This is the ' +\
                          'main variable for this file. It is in the format ' +\
                          'lat x lon x time.\n' +\
-                         'lat: The latitude (vector form).\n' +\
-                         'lon: The longitude (vector form).\n' +\
+                         'lat: The latitude (lat x lon format).\n' +\
+                         'lon: The longitude (lat x lon format).\n' +\
                          'date: List of dates starting ' +\
-                         '01-01-1979 to 12-31-2016 (%Y-%m-%d format). ' +\
-                         'Leap year additions (2-29) are excluded.'
+                         '01-01-1979 to 12-31-2019 (%Y-%m-%d format). ' +\
+                         'Leap year days (2-29) are excluded.'
 
         
         # Create the spatial and temporal dimensions
@@ -206,7 +264,24 @@ def WriteNC(var, lat, lon, dates, filename = 'tmp.nc', VarName = 'tmp', VarSName
 # Function to subset any dataset.
 def SubsetData(X, Lat, Lon, LatMin, LatMax, LonMin, LonMax):
     '''
+    This function is designed to subset data for any gridded dataset, including
+    the non-simple grid used in the NARR dataset, where the size of the subsetted
+    data is unknown. Note this function only makes square subsets with a maximum 
+    and minimum latitude/longitude.
     
+    Inputs:
+    - X: The variable to be subsetted.
+    - Lat: The gridded latitude data corresponding to X.
+    - Lon: The gridded Longitude data corresponding to X.
+    - LatMax: The maximum latitude of the subsetted data.
+    - LatMin: The minimum latitude of the subsetted data.
+    - LonMax: The maximum longitude of the subsetted data.
+    - LonMin: The minimum longitude of the subsetted data.
+    
+    Outputs:
+    - XSub: The subsetted data.
+    - LatSub: Gridded, subsetted latitudes.
+    - LonSub: Gridded, subsetted longitudes.
     '''
     
     # Collect the original sizes of the data/lat/lon
@@ -265,7 +340,7 @@ def SubsetData(X, Lat, Lon, LatMin, LatMax, LonMin, LonMax):
             PlaceHolder[m:m+Isub-ColNum] = SubInd[n+1] + np.arange(1, 1+Isub-ColNum)
             # Note this is the last value, so nothing else needs to be incremented up.
         elif ( (IndDiff > 1) | (np.mod(SubInd[n]+1,I) == 0) ):
-            # Determine how man columns this row has.
+            # Determine how many columns this row has.
             ColNum = n+1-Start
             
             # Fill the placeholder with the next index(ices) when the row has less than
@@ -306,7 +381,7 @@ def SubsetData(X, Lat, Lon, LatMin, LatMax, LonMin, LonMax):
     return XSub, LatSub, LonSub
 #%%
 # cell 8
-  # Load the data
+# Load the data
 
 esrm      = load_climatology(esrmSName, esrmFN)
 sesr      = load_full_climatology(sesrClimSName, sesrClimFN)
@@ -317,7 +392,7 @@ dsesrstd  = load_climatology(dsesrstdSName, dsesrstdFN)
 
 #%%
 # cell 9
-  # Create a sample plot of SESR to see what the map/grid looks like
+# Create a sample plot of SESR to see what the map/grid looks like
 
 # Lonitude and latitude tick information
 lat_int = 15
@@ -369,6 +444,7 @@ ax.set_extent([np.nanmin(sesr['lon']), np.nanmax(sesr['lon']), np.nanmin(sesr['l
 plt.show(block = False)
 
 #%%
+# cell 10
 # Load and subset the mask dataset
 
 #### Remove this cell when the .nc files have the mask set included in them (this cell will then become unnecessary)
@@ -379,17 +455,28 @@ def DateRange(StartDate, EndDate):
     those two dates.
     
     Inputs:
-        StartDate - A datetime. The starting date of the interval.
-        EndDate - A datetime. The ending date of the interval.
+        - StartDate: A datetime. The starting date of the interval.
+        - EndDate: A datetime. The ending date of the interval.
         
     Outputs:
-        All dates between StartDate and EndDate (inclusive)
+        - All dates between StartDate and EndDate (inclusive)
     '''
     for n in range(int((EndDate - StartDate).days) + 1):
         yield StartDate + timedelta(n) 
 
-def load2Dnc(filename, SName, path = '/Volumes/My Book/'):
+def load2Dnc(filename, SName, path = './Data/'):
     '''
+    This function loads 2 dimensional .nc files (e.g., the lat or lon files/
+    only spatial files). Function is simple as these files only contain the raw data.
+    
+    Inputs:
+    - filename: The filename of the .nc file to be loaded.
+    - SName: The short name of the variable in the .nc file (i.e., the name to
+             call when loading the data)
+    - Path: The path from the present direction to the directory the file is in.
+    
+    Outputs:
+    - var: The main variable in the .nc file.
     '''
     
     with Dataset(path + filename, 'r') as nc:
@@ -397,6 +484,7 @@ def load2Dnc(filename, SName, path = '/Volumes/My Book/'):
         
     return var
 
+# Load the land-sea mask and associated lat/lon
 mask = load2Dnc('land.nc', 'land')
 lat = load2Dnc('lat_narr.nc', 'lat') # Dataset is lat x lon
 lon = load2Dnc('lon_narr.nc', 'lon') # Dataset is lat x lon
@@ -413,7 +501,7 @@ maskNew = np.ones((I, J, T)) * np.nan
 maskNew[:,:,0] = mask[0,:,:] # No loop is needed since the time dimension has length 1
 
 #%%
-# cell 10
+# cell 11
 # Subset data to U.S. (25N, -130E to 50Nm -65E) for easier and quicker calculations
 LatMin = 25
 LatMax = 50
@@ -427,8 +515,8 @@ dsesrMSub, LatSub, LonSub   = SubsetData(dsesrm['dsesrm'], dsesrm['lat'], dsesrm
 dsesrSTDSub, LatSub, LonSub = SubsetData(dsesrstd['dsesrsstd'], dsesrstd['lat'], dsesrstd['lon'], LatMin, LatMax, LonMin, LonMax)
 maskSub, LatSub, LonSub     = SubsetData(maskNew, lat, lon, LatMin = LatMin, LatMax = LatMax, LonMin = LonMin, LonMax = LonMax)
 #%%
-# cell 11
-# Standardize the narr dsesr.
+# cell 12
+# Standardize the NARR dsesr.
 I, J, T = dsesrSub.shape
 
 Sdsesr = np.ones((I, J, dsesrSub.shape[-1])) * np.nan
@@ -438,10 +526,8 @@ for n, t in enumerate(dsesr['date']):
     Sdsesr[:,:,n] = (dsesrSub[:,:,n] - dsesrMSub[:,:,ind[0]])/dsesrSTDSub[:,:,ind[0]]
 
 #%%
-# cell 12
-  # Use the same algorithm to identify flash drought for the NARR.
-
-# Initialize the criteria variables for flash drought identification
+# cell 13
+# Initialize the criteria and percentile variables for flash drought identification
 I, J, T   = sesrSub.shape
 
 crit1 = np.ones((I, J, T)) * np.nan
@@ -451,14 +537,16 @@ crit4 = np.ones((I, J, T)) * np.nan
 
 FD = np.ones((I, J, T)) * np.nan
 
-time = np.asarray([datetime(2012, d.month, d.day) for d in sesr['ymd']]) # Create a time variable for a full year
-
 dsesrP = np.ones((I, J ,T)) * np.nan
 mdsesrP = np.ones((I, J, T)) * np.nan
 
+# Create a time variable for a full year (2012; used to test the algorithm)
+time = np.asarray([datetime(2012, d.month, d.day) for d in sesr['ymd']]) 
+
+
 
 #%%
-# cell 13
+# cell 14
 # Turn the necessary variables into sapce x time arrays to see if that optamizes code
 I, J, T = sesrSub.shape
 
@@ -484,31 +572,34 @@ I, J, T = Sdsesr.shape
 Sdsesr2d = Sdsesr.reshape(I*J, T, order = 'F')
 
 #%%
-# cell 14
-  # Find criteria for the NARR
+# cell 15
+# Use the algorithm to identify flash drought for the NARR.
+# Find criteria for the NARR
 
+# Next three lines are used to run the algorithm for only 2012 and test the algorithm
 YearSelect = 2012
 YearInd = np.where(dsesr['year'] == 2012)[0]
 YearSelection = sesr['ymd'][YearInd]
 
+# Initialize some variables.
 IJ, T = sesr2d.shape
-StartDate  = dsesr['ymd'][-1] # Initialize start_date so it always has some value
-MinChange  = timedelta(days = 30)
+StartDate  = dsesr['ymd'][-1] # Initialize start date so it always has some value
+MinChange  = timedelta(days = 30) # Minimum number of days for criteria 1 to be true
 mdDates    = np.asarray([datetime(1900, d.month, d.day) for d in dsesr['date']]) # Create a month/day array with all the months and days in the pentad data
-CritPercentile = 40
-NumExceptions  = 1
-count = -99
+CritPercentile = 40 # Percentile dsesr pentads need to be below for criteria 3 to be true
+NumExceptions  = 1 # Number of exceptions allowed for criteria 3
+count = -99 # Initial count. Count is used to count exceptions for criteria 3
 SixDays  = timedelta(days = 6)
 FiveDays = timedelta(days = 5)
 OneDay   = timedelta(days = 1)
 ZeroDays = timedelta(days = 0)
 criteria3 = 0 # Start by assuming criterias 3 and 4 are false
 criteria4 = 0
-Offset = 100/(2*len(np.unique(sesr['year'])))
+Offset = 100/(2*len(np.unique(sesr['year']))) # Offset between percentile calculations in Python and MatLab (Used to compare results to Christian et al. 2019)
 #Offset = 0
 
 for ij in range(IJ):
-    # print('Currently %4.2f %% done.' %(ij/IJ * 100))
+    print('Currently %4.2f %% done.' %(ij/IJ * 100))
 
     # Skip over ocean values
     if mask2d[ij,0] == 0:
@@ -520,32 +611,32 @@ for ij in range(IJ):
     count = -99 # Reset the counter
     criteria3 = 0 # Reset criteria 3 and 4 at the start of each grid point.
     criteria4 = 0
-    for t, date in enumerate(YearSelection): # For looping through only 1 year. Below is for looping through all years.
-    # for t, date in enumerate(dsesr['ymd'][:-3]): # Note, using dsesr will exclude the last 5 days (pentad), but there is no dsesr for that last pentad so it cannot be used. 
+    # for t, date in enumerate(YearSelection): # For looping through only 1 year. Below is for looping through all years.
+    for t, date in enumerate(dsesr['ymd'][:-3]): # Note, using dsesr will exclude the last 5 days (pentad), but there is no dsesr for that last pentad so it cannot be used. 
                                                  # An additional pentad is omitted at the end so step t+1 can be examined.
         
         # ### Use these when not looping over all years
-        # Find all days in the full dataset equal to the current day
-        ind = np.where( (sesr['month'] == YearSelection[t].month) & 
-                        (sesr['day'] == YearSelection[t].day) )[0]
-        
-        # Find all days in the pentad dataset equal to the current day
-        penind = np.where( (dsesr['month'] == YearSelection[t].month) & 
-                          (dsesr['day'] == YearSelection[t].day) )[0]
-        
-        # Find the current date indice. This is to be used instead of t when not looping over all years.
-        tind = np.where(YearSelection[t] == sesr['ymd'])[0]
-        
         # # Find all days in the full dataset equal to the current day
-        # ind = np.where( (sesr['month'] == sesr['ymd'][t].month) & 
-        #                 (sesr['day'] == sesr['ymd'][t].day) )[0]
+        # ind = np.where( (sesr['month'] == YearSelection[t].month) & 
+        #                 (sesr['day'] == YearSelection[t].day) )[0]
         
         # # Find all days in the pentad dataset equal to the current day
-        # penind = np.where( (dsesr['month'] == sesr['ymd'][t].month) & 
-        #                   (dsesr['day'] == sesr['ymd'][t].day) )[0]
+        # penind = np.where( (dsesr['month'] == YearSelection[t].month) & 
+        #                   (dsesr['day'] == YearSelection[t].day) )[0]
         
         # # Find the current date indice. This is to be used instead of t when not looping over all years.
-        # tind = np.where(sesr['ymd'][t] == sesr['ymd'])[0]
+        # tind = np.where(YearSelection[t] == sesr['ymd'])[0]
+        
+        # Find all days in the full dataset equal to the current day
+        ind = np.where( (sesr['month'] == sesr['ymd'][t].month) & 
+                        (sesr['day'] == sesr['ymd'][t].day) )[0]
+        
+        # Find all days in the pentad dataset equal to the current day
+        penind = np.where( (dsesr['month'] == sesr['ymd'][t].month) & 
+                          (dsesr['day'] == sesr['ymd'][t].day) )[0]
+        
+        # Find the current date indice. This is to be used instead of t when not looping over all years.
+        tind = np.where(sesr['ymd'][t] == sesr['ymd'])[0]
         
         # Find the current pentad indice
         DateDelta = date - Pensesr['ymd']
@@ -555,7 +646,6 @@ for ij in range(IJ):
             DateDelta = DateDelta
             
         pentind   = np.where( (DateDelta < FiveDays) & (DateDelta >= ZeroDays) )[0]
-#            print(Climdsesr['date'][ind])
         
         # Note the loop is over Delta SESR, which is marked at the start of the chagne (the  p-1 pentad). Then the current pentad where the FD ends is the i th pentad (current + five days) 
         if (np.mod(date.year, 4) == 0) & (date.month == 3) & (date.day == 2): # Exclude leap days.
@@ -567,7 +657,7 @@ for ij in range(IJ):
         percent20 = np.nanpercentile(sesr2d[ij,ind], 20 + Offset)
         
         
-        ## Calculate the quantile for criteria 3 that location and time #
+        ## Calculate the percentile for criteria 3 that location and time ##
         Crit3Quant = np.nanpercentile(Sdsesr2d[ij,penind], CritPercentile + Offset)
         
         # Determine if this loop is the start of a flash drought
@@ -581,10 +671,6 @@ for ij in range(IJ):
                                                                      # Also note if StardInd > pentind (as in the initialized case), the slice returns an empty array.
                                                                      # Use tind for pentads; pentind for daily
         
-        # Determine the mean change in SESR between start and end date for all years
-        
-        
-        
         # Calculate the mean change in SESR for all years
         MeanSESRChanges = np.ones((len(np.unique(sesr['year'])))) * np.nan
         for n, year in enumerate(np.unique(sesr['year'])):
@@ -597,17 +683,6 @@ for ij in range(IJ):
         # Calculate the 25th percentile for the mean changes
         percent25 = np.nanpercentile(MeanSESRChanges, 25 + Offset)
         
-        
-        if ((ij == 10448) | (ij == 10449)) & ((date >= datetime(2012, 6, 15)) & (date <= datetime(2012, 7, 15))):
-            print('40 percentile:', Crit3Quant)
-            print('Delta sesr:', Sdsesr2d[ij,tind[0]])
-            
-            print('25 percentile:', percent25)
-            print('Mean delta sesr:', MeanChange)
-            
-            print('Start Date:', StartDate)
-            print('Criteria 3:', crit3[ij,tind[0]-1])
-            print('Criteria 4:', crit4[ij,tind[0]-1])
         
         ### Determine criteria 3 for the given pentad ###
         if (Sdsesr2d[ij,tind[0]] <= Crit3Quant) & (Crit3Part2 == 1): # Use tind for pentads; pentind for daily
@@ -650,7 +725,7 @@ for ij in range(IJ):
             
             
         #### Determine Criteria 1 ###
-        # Five days are added here because, while date marks the beginning of Delta SESR, the pentad at the end of Delta SESR
+        # Five days are added here (specifically to PentadDate) because, while date marks the beginning of Delta SESR, the pentad at the end of Delta SESR
         #   must be included as well, which is five days. 
         if ( (PentadDate - StartDate) < MinChange ):# | (narrcrit3[j,i,t] == 0) ):
             crit1[ij,tind[0]+1] = 0
@@ -677,17 +752,13 @@ for ij in range(IJ):
         else:
             crit2[ij,tind[0]] = 0
             
-        # if (j == latind[0]) & (i == lonind[0]):
-        #     print(date - StartDate, ClimSdsesr[i,j,pentind], Crit3Quant, date)
-        #     print(count, criteria3)
-            # print(ClimSdsesr[i,j,pentind], Crit3Quant, date)
-            # print(Climdsesr['dsesr'][i,j,pentind])
-            
+
+        # Calculate the percentile values for dsesr and mean dsesr 
         dsesrP[ij,tind[0]] = stats.percentileofscore(Sdsesr2d[ij,penind], Sdsesr2d[ij,tind[0]])
         mdsesrP[ij,tind[0]] = stats.percentileofscore(MeanSESRChanges, MeanChange)
         
         
-                        
+# Print output to examine the variables                     
 print(crit1)
 print('\n')
 print(crit2)
@@ -698,8 +769,8 @@ print(crit4)
 
 
 #%%
-# cell 15
-  # Initialize and identify the flash drought with the NARR data
+# cell 16
+# Initialize and identify the flash drought with the NARR data
 
 I, J, T = dsesrSub.shape
 
@@ -721,45 +792,22 @@ for t in range(T):
         # Flash drought is considered at the end of the pentad change (hence, the p+1 pentad for criteria 1 and 2, which does not consider Delta SESR)
         FlashDrought = ((crit1[ij,t+1] == 1) & (crit2[ij,t+1] == 1) & 
                         (crit3[ij,t] == 1) & (crit4[ij,t] == 1))
-        # Determine if all criteria have tested true for a given grid point
+        # Determine if all criteria have tested true for a given grid point and pentad
         if FlashDrought != 0:
             FD[ij,t] = 1
-        # elif  (t != 0) & (FD[j,i,t-1] != 0):
-        #     # narrFD[j,i,t] = 2
-        #     FD[j,i,t] = 1
+
         else:
             FD[ij,t] = 0
             
-        # if ((narr_time[t] >= datetime(2012, 7, 15)) & (narr_time[t] <= datetime(2012, 7, 25)) & 
-        #     (FlashDrought == 1)):
-        #     FD[j,i,t] = 2
                 
 print(FD)
 
 # FDb = FD
 # Use FDb to come back to this point quickly and try to figure out issue with FD analysis
 
+
 #%%
-# Dummy cell to test the FD identification
-sys.path.append('./FlashDroughtFunctions/')
-from FlashDroughtFunctions.FlashDroughtCaseStudies import *
-
-I, J, T = sesrSub.shape
-crit1 = crit1.reshape(I, J, T, order = 'F')
-crit2 = crit2.reshape(I, J, T, order = 'F')
-crit3 = crit3.reshape(I, J, T, order = 'F')
-crit4 = crit4.reshape(I, J, T, order = 'F')
-FD = FD.reshape(I, J, T, order = 'F')
-
-crit2int = np.ones((I, J, T)) * np.nan
-crit2p   = np.ones((I, J, T)) * np.nan
-
-year = 2012
-subset = False
-
-CaseStudy(crit2, crit4, FD, crit2int, crit2p, year, LatSub, LonSub, sesr['ymd'], sesr['year'], sesr['month'], maskSub, subset)
-#%%
-# cell 16
+# cell 17
 # Now create a variable to measure the intensity of drought
 I, J, T = sesrSub.shape
 crit2int = np.ones((I, J, T)) * np.nan
@@ -785,25 +833,25 @@ for ij in range(IJ):
         # Find the current date indice
         tind = np.where(sesr['ymd'][t] == sesr['ymd'])[0]
         
-        ## Calculate the 20th quantile for category 2 drought ##
+        ## Calculate the 20th quantile for category D1 drought ##
         percent20 = np.nanpercentile(sesr2d[ij,ind], 20 + Offset)
         
-        ## Calculate the 11th quantile for category 2 drought ##
+        ## Calculate the 11th quantile for category D1 drought ##
         percent11 = np.nanpercentile(sesr2d[ij,ind], 11 + Offset)
         
-        ## Calculate the 10th quantile for category 2 drought ##
+        ## Calculate the 10th quantile for category D2 drought ##
         percent10 = np.nanpercentile(sesr2d[ij,ind], 10 + Offset)
         
-        ## Calculate the 6th quantile for category 2 drought ##
+        ## Calculate the 6th quantile for category D2 drought ##
         percent6 = np.nanpercentile(sesr2d[ij,ind], 6 + Offset)
         
-        ## Calculate the 5th quantile for category 2 drought ##
+        ## Calculate the 5th quantile for category D3 drought ##
         percent5 = np.nanpercentile(sesr2d[ij,ind], 5 + Offset)
         
-        ## Calculate the 3rd quantile for category 2 drought ##
+        ## Calculate the 3rd quantile for category D3 drought ##
         percent3 = np.nanpercentile(sesr2d[ij,ind], 3 + Offset)
         
-        ## Calculate the 2nd quantile for category 2 drought ##
+        ## Calculate the 2nd quantile for category D4 drought ##
         percent2 = np.nanpercentile(sesr2d[ij,ind], 2 + Offset)
         
         
@@ -811,7 +859,7 @@ for ij in range(IJ):
         crit2p[ij,t] = stats.percentileofscore(sesr2d[ij,ind], sesr2d[ij,t])
         
         
-        ### Determine drought severity 2 ###
+        ### Determine drought severity ###
         if (sesr2d[ij,tind] <= percent20) & (sesr2d[ij,tind] >= percent11):
             crit2int[ij,t] = 1
         elif (sesr2d[ij,tind] <= percent10) & (sesr2d[ij,tind] >= percent6):
@@ -825,7 +873,7 @@ for ij in range(IJ):
 
 
 #%%
-# cell 17
+# cell 18
 # Restore the criteria and flash drought information to 3D arrays
 I, J, T = sesrSub.shape
 crit1 = crit1.reshape(I, J, T, order = 'F')
@@ -841,8 +889,8 @@ crit2int = crit2int.reshape(I, J, T, order = 'F')
 crit2p   = crit2p.reshape(I, J, T, order = 'F')
 
 #%%
-# cell 18
-  # Plot the flash drought for the NARR
+# cell 19
+# Plot the flash drought for the NARR
 
 # Use this to select the desired date to examine
 PlotDate = datetime(2012, 7, 25)
@@ -876,8 +924,8 @@ ax.set_extent([-130, -65, 25, 50])
 plt.show()
 
 #%%
-# cell 19
-  # Plot the drought intensity for the NARR
+# cell 20
+# Plot the drought intensity for the NARR
 
 # Use this to select the desired date to examine
 PlotDate = datetime(2011, 7, 25)
@@ -911,7 +959,7 @@ ax.set_extent([-130, -65, 25, 50])
 plt.show()
 
 #%%
-# cell 18
+# cell 21
 # Save the different criteria and FD files for ease of use without long calculations
 
 # Save the criteria
@@ -945,6 +993,29 @@ WriteNC(dsesrP, LatSub[:,:], LonSub[:,:], sesr['ymd'], 'DeltaSesrPercentiles.nc'
 
 WriteNC(mdsesrP, LatSub[:,:], LonSub[:,:], sesr['ymd'], 'MeanDeltaSesrPercentiles.nc',
          'Mean Delta SESR Percentiles', 'mdsesrp')
+
+#%%
+### The following cells are used to test functions and data
+
+# Dummy cell to test the FD identification
+sys.path.append('./FlashDroughtFunctions/')
+from FlashDroughtFunctions.FlashDroughtCaseStudies import *
+
+I, J, T = sesrSub.shape
+crit1 = crit1.reshape(I, J, T, order = 'F')
+crit2 = crit2.reshape(I, J, T, order = 'F')
+crit3 = crit3.reshape(I, J, T, order = 'F')
+crit4 = crit4.reshape(I, J, T, order = 'F')
+FD = FD.reshape(I, J, T, order = 'F')
+
+crit2int = np.ones((I, J, T)) * np.nan
+crit2p   = np.ones((I, J, T)) * np.nan
+
+year = 2012
+subset = False
+
+CaseStudy(crit2, crit4, FD, crit2int, crit2p, year, LatSub, LonSub, sesr['ymd'], sesr['year'], sesr['month'], maskSub, subset)
+
 
 #%%
 # Perform some subsectioning for a time series of SESR to help see how the criteria analysis uses it.
@@ -1017,7 +1088,7 @@ plt.savefig(OutPath + SaveName, bbox_inches = 'tight')
 plt.show(block = False)
 
 #%%
-  # The next few cells are specifically for creating two figures to be used on the poster for this project
+# The next few cells are specifically for creating two figures to be used on the poster for this project
 
 # # Lat/Lon tick information
 # LatInt = 5
