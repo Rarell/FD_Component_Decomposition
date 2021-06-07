@@ -6,6 +6,7 @@ Created on Wed Sep 30 16:03:59 2020
 @author: stuartedris
 
 A script designed to compare the rasterized USDM data with the drought precentiles already calculated.
+This is used to help evaluate how well SESR represents drought compared to the USDm.
 """
 
 #%%
@@ -36,13 +37,30 @@ from FlashDroughtFunctions.FlashDroughtCaseStudies import *
 from FlashDroughtFunctions.FlashDroughtStats import *
 
 #%%
-# cell 4
-  # Create a function to import the nc files
+# cell 2
+
+# Create a function to import the nc files
 def LoadNC(SName, filename, path = './Data/pentad_NARR_grid/'):
     '''
+    This function loads .nc files. This function takes in the
+    name of the data, and short name of the variable to load the .nc file. 
     
+    Inputs:
+    - SName: The short name of the variable being loaded. I.e., the name used
+             to call the variable in the .nc file.
+    - filename: The name of the .nc file.
+    - path: The path from the current directory to the directory the .nc file is in.
+    
+    Outputs:
+    - X: A directory containing all the data loaded from the .nc file. The 
+         entry 'lat' contains latitude (space dimensions), 'lon' contains longitude
+         (space dimensions), 'date' contains the dates in a datetime variable
+         (time dimension), 'month' 'day' are the numerical month
+         and day value for the given time (time dimension), 'ymd' contains full
+         datetime values, and 'SName' contains the variable (space and time demsions).
     '''
     
+    # Initialize the directory to contain the data
     X = {}
     DateFormat = '%Y-%m-%d %H:%M:%S'
     
@@ -74,15 +92,30 @@ def LoadNC(SName, filename, path = './Data/pentad_NARR_grid/'):
     return X
 
 #%%
+# cell 3
 
-# Write all the USDM data to an nc file for later used.
-
+# Create a function to write nc files
 def WriteNC(var, lat, lon, dates, filename = 'tmp.nc', VarName = 'tmp', VarSName = 'tmp'):
     '''
+    This function is deisgned write data, and additional information such as
+    latitude and longitude and timestamps to a .nc file.
+    
+    Inputs:
+    - var: The variable being written (lat x lon x time format).
+    - lat: The latitude data with the same spatial grid as var.
+    - lon: The longitude data with the same spatial grid as var.
+    - dates: The timestamp for each pentad in var in a %Y-%m-%d format, same time grid as var.
+    - filename: The filename of the .nc file being written.
+    - VarName: The full name of the variable being written (for the nc description).
+    - VarSName: The short name of the variable being written. I.e., the name used
+                to call the variable in the .nc file.
+                
+    Outputs:
+    - None. Data is written to a .nc file.
     '''
     
     # Define the path
-    path = '../MISC_Data/Drought_Data/'
+    path = './Data/MISC_Data/'
     
      # Determine the spatial and temporal lengths
     I, J, T = var.shape
@@ -90,7 +123,6 @@ def WriteNC(var, lat, lon, dates, filename = 'tmp.nc', VarName = 'tmp', VarSName
     
     with Dataset(path + filename, 'w', format = 'NETCDF4') as nc:
         # Write a description for the .nc file
-        ##### May need to change to lat x lon format for the lat and lon descriptions
         nc.description = 'This file contains SESR percentile data from 2010 - 2019, ' +\
                          'on the USDM time scale. ' +\
                          'Variable: ' + str(VarSName) + ' (unitless). This is the ' +\
@@ -108,14 +140,8 @@ def WriteNC(var, lat, lon, dates, filename = 'tmp.nc', VarName = 'tmp', VarSName
         nc.createDimension('time', size = T)
         
         # Create the lat and lon variables
-        # nc.createVariable('lat', lat.dtype, ('lat', ))
-        # nc.createVariable('lon', lon.dtype, ('lon', ))
-        
         nc.createVariable('lat', lat.dtype, ('lat', 'lon'))
         nc.createVariable('lon', lon.dtype, ('lat', 'lon'))
-        
-        # nc.variables['lat'][:] = lat[:]
-        # nc.variables['lon'][:] = lon[:]
         
         nc.variables['lat'][:,:] = lat[:,:]
         nc.variables['lon'][:,:] = lon[:,:]
@@ -129,8 +155,11 @@ def WriteNC(var, lat, lon, dates, filename = 'tmp.nc', VarName = 'tmp', VarSName
         nc.createVariable(VarSName, var.dtype, ('lat', 'lon', 'time'))
         nc.variables[str(VarSName)][:,:,:] = var[:,:,:]
 #%%
+# cell 4
+# Load the data
+
 # Define some names
-USDMpath = '../USDM_Data_Collection/USDM_Data/'
+USDMpath = '.Data/Misc_Data/'
 USDMfn = 'USDM_grid_all_years.nc'
 USDMname = 'USDM'
 
@@ -138,15 +167,18 @@ USDMname = 'USDM'
 # DPname = 'DP'
 
 # Try with daily data instead of pentad
-DPpath = '../MISC_data/Drought_Data/'
+DPpath = './Data/MISC_data/'
 DPfn = 'sesr_percentiles_all_years_daily_conus.nc'
 DPname = 'SP'
 
+# Load the data
 USDM = LoadNC(USDMname, USDMfn, path = USDMpath)
 DP = LoadNC(DPname, DPfn, path = DPpath)
 
 #%%
+# cell 5
 # Convert the DP to the USDM time scale
+
 # Note that the timestamp on the USDM is the end of the time period it is for.
 # The pentads are at the beginning of the time period they cover.
 
@@ -161,6 +193,7 @@ for n, date in enumerate(USDM['ymd']):
     # Calculate the drought percentiles on the USDM time scale by taking an average.
     DP_usdm[:,:,n] = np.nanmean(DP['SP'][:,:,ind], axis = -1)
 
+# Note this loop converts DP on the pentad time scale to the USDM time scale
 # for n, date in enumerate(USDM['ymd']):
 #     # Leap days will have 8 days in that week, since the day is ignored in the dataset.
 #     if (np.mod(date.year, 4) == 0) & (date.month == 3) & (date.day < 6):
@@ -190,14 +223,20 @@ for n, date in enumerate(USDM['ymd']):
     
     
 #%%
+# cell 6
 # Write the precentile data to a file for future use/consideration.
 WriteNC(DP_usdm, DP['lat'], DP['lon'], USDM['ymd'], filename = 'SESRPercentiles_USDM_timescale.nc', VarName = 'SESR Percentiles', VarSName = 'DP')
 
 #%%
+# cell 7
 # Calculate the categorized drought
+
+# Determine the offset between the MatLab and Python methods of calculating percentiles
+#   (for comparison with the results of Christian et al. 2019)
 #Offset = 0
 Offset = 100/(2*len(np.unique(USDM['year'])))
 
+# Determine the size of the data nd initialize some value
 I, J, T = DP_usdm.shape
 
 DC = np.zeros((I, J, T)) * np.nan
@@ -205,6 +244,8 @@ DC = np.zeros((I, J, T)) * np.nan
 DP_usdm = DP_usdm.reshape(I*J, T, order = 'F')
 DC = DC.reshape(I*J, T, order = 'F')
 
+# Determine the drought intensity based on the USDM table for D1 - D4 based
+#  on percentiles using SESR percentiles
 for ij in range(I*J):
     print('Currently %4.2f %% done.' %(ij/(I*J) * 100))
     
@@ -222,11 +263,14 @@ for ij in range(I*J):
         else:
             DC[ij,t] = 0
 
+# Reshape the data back to 3D data
 DP_usdm = DP_usdm.reshape(I, J, T, order = 'F')
 DC = DC.reshape(I, J, T, order = 'F')
 #%%
+# cell 8
 # Create some maps to ensure everything went well.
-           
+
+# Determine the date of the drought
 PlotDate = datetime(2017, 8, 29)
 
 ind = np.where(PlotDate == USDM['ymd'])[0]
@@ -244,11 +288,16 @@ ax.set_title('USDM Map for ' + PlotDate.strftime('%Y/%m/%d'), size = 22)
 # Add the state outlines and set the extent so that only the U.S. is shown
 ax.add_feature(cfeature.STATES, zorder = 6)
 
+# Set the map extent
 ax.set_extent([-129, -65, 25-1.5, 50-1.5])
 
+# Plot the data
 cs = ax.pcolormesh(USDM['lon'], USDM['lat'], USDM['USDM'][:,:,ind[0]], vmin = 0, vmax = 4, cmap = cmap, transform = ccrs.PlateCarree())
 
+# Set the location and size of the colorbar
 cbax = fig.add_axes([0.125, 0.32, 0.775, 0.015])
+
+# Create the colorbar
 cbar = fig.colorbar(cs, cax = cbax, orientation = 'horizontal')
 
 cbar.set_ticks(np.arange(0+2/5, 4, 4/5))
@@ -267,11 +316,16 @@ ax.set_title('Drought Component Map for ' + PlotDate.strftime('%Y/%m/%d'), size 
 # Add the state outlines and set the extent so that only the U.S. is shown
 ax.add_feature(cfeature.STATES, zorder = 6)
 
+# Set the map extent
 ax.set_extent([-129, -65, 25-1.5, 50-1.5])
 
+# Plot the data
 cs = ax.pcolormesh(USDM['lon'], USDM['lat'], DC[:,:,ind[0]], vmin = 0, vmax = 4, cmap = cmap, transform = ccrs.PlateCarree())
 
+# Set the  location and size of the colorbar
 cbax = fig.add_axes([0.125, 0.32, 0.775, 0.015])
+
+# Create the colorbar
 cbar = fig.colorbar(cs, cax = cbax, orientation = 'horizontal')
 
 cbar.set_ticks(np.arange(0+2/5, 4, 4/5))
@@ -280,8 +334,10 @@ cbar.ax.set_xticklabels(['None', 'D1', 'D2', 'D3', 'D4'], size = 20)
 plt.show(block = False) 
 
 #%%
+# cell 9
 # Begin statistical comparison, starting with comparison with intensity
 
+# Focus on the growing season
 growInd = np.where( (USDM['month'] >= 4) & (USDM['month'] <= 10) )[0]
 
 YearsGrow = USDM['year'][growInd]
@@ -304,12 +360,14 @@ PlotStatMap(IntCompDiff, USDM['lon'], USDM['lat'], title = 'Composite Mean Diffe
             cmin = -0.10, cmax = 0.10, cint = 0.01, RoundDigit = 2, savename = 'DroughtCompCompMeanDiff.png')
 
 #%%
-# Statistical for spatial coverage.
+# cell 10
+# Statistical calculations for spatial coverage only.
 I, J, T = DCgrow.shape
 
 DCcov = np.zeros((I, J, T))
 USDMcov = np.zeros((I, J, T))
 
+# To focus on only coverage, turn all drought values (value >= 1) to 1
 DCcov[DCgrow >= 1] = 1
 USDMcov[USDMgrow >= 1] = 1
 
@@ -328,7 +386,10 @@ PlotStatMap(CovCompDiff, USDM['lon'], USDM['lat'], title = 'Composite Mean Diffe
             cmin = -0.10, cmax = 0.10, cint = 0.01, RoundDigit = 2, savename = 'DroughtCoverageCompMeanDiff.png')
 
 #%%
+# cell 11
 # Create the truth table maps
+
+# Initialize some variables
 I, J, T = DCcov.shape
 
 YoN = np.zeros((I, J, T)) * np.nan # YoN stands for Yes or No, that is correct identification or false positive/negative.
@@ -350,7 +411,7 @@ FN = FN.reshape(I*J, T, order = 'F')
 
 for ij in range(I*J):
     for t in range(T):
-        # Find the spots where the DC and USDM agree there is drought.
+        # Find the spots where the DC and USDM agree there is or is not drought.
         if ((DCcov[ij,t] == 1) & (USDMcov[ij,t] == 1)) | ((USDMcov[ij,t] == 0) & (USDMcov[ij,t] == 0)):
             YoN[ij,t] = 1
         # For the remaining points (where they do not agree) set to 0.
@@ -380,7 +441,8 @@ for ij in range(I*J):
         # Set remaining values to nan
         else:
             FN[ij,t] = 0
-            
+
+# Reshape the data back into 3D data
 DCcov = DCcov.reshape(I, J, T, order = 'F')
 USDMcov = USDMcov.reshape(I, J, T, order = 'F')
 
@@ -404,15 +466,14 @@ FN[DP['mask'] == 0] = 0
 
 
 #%%
-# Create a six panel plot with the derived data.
-# Top left, Cor. Coef. for drought intensity.
-# Top center, Cor. Coef. for drought coverage
-# Top right, truth table for correct/incorrect identification
-# Bottom left, Comp. Diff for drought intensity
-# Bottom center, Comp. Diff for drought coverage
-# Bottom right, truth table for false positives/negatives
+# cell 12
+# Create two four panel plot with the derived correlation and composite mean diference data.
+# Top left, Cor. Coef./Composite Diff. for drought intensity.
+# Top right, statistical significance for Cor. Coef./Composite Diff. for drought intensity.
+# Bottom left, Cor. Coef./Composite Diff. for drought coverage.
+# Bottom right, statistical significance for Cor. Coef./Composite Diff. for drought coverage.
 
-alpha = 0.05
+alpha = 0.05 # Statistical significance level
 
 # Lat/Lon tick information
 lat_int = 10
@@ -447,24 +508,34 @@ CountriesReader = shpreader.Reader(CountriesSHP)
 USGeom = [country.geometry for country in CountriesReader.records() if country.attributes['NAME'] == 'United States of America']
 NonUSGeom = [country.geometry for country in CountriesReader.records() if country.attributes['NAME'] != 'United States of America']
 
-# Create the plot
+
+
+# Create the first figure
 fig, axes = plt.subplots(figsize = [12, 20], nrows = 2, ncols = 2, 
                              subplot_kw = {'projection': ccrs.PlateCarree()})
+
+# Set some figure parameters
 plt.subplots_adjust(left = 0.1, right = 0.9, bottom = 0.1, top = 0.9, wspace = 0.05, hspace = -0.83)
 
 ax11 = axes[0,0]; ax12 = axes[0,1]
 ax21 = axes[1,0]; ax22 = axes[1,1]
 
+# Create the main title
 fig.suptitle('SESR Drought Component and USDM Correlation Coefficient' + '\n' + 'for April - October 2010 - 2019', fontsize = 22, y = 0.675)
 
 # Top left plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax11.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax11.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax11.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set labels and local title
 ax11.set_title('Correlation Coefficient (unitless)', fontsize = 18)
 ax11.set_ylabel('Drought Intensity', fontsize = 16)
 
+# Set the tick information
 ax11.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax11.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -479,19 +550,26 @@ ax11.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = False, labeltop = True,
                 labelleft = True, labelright = False)
 
+# Plot the data
 cs = ax11.pcolormesh(USDM['lon'], USDM['lat'], IntR[:,:], vmin = -1, vmax = 1, cmap = cmap, transform = ccrs.PlateCarree(), zorder = 0)
 
+# Set the map extent over the U.S.
 ax11.set_extent([-129, -65, 25-1.5, 50-1.5])
 
 
 
 # Bottom left plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax21.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax21.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax21.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set labels
 ax21.set_ylabel('Drought Coverage', fontsize = 16)
 
+# Set the tick information
 ax21.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax21.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -506,28 +584,38 @@ ax21.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = True, labeltop = False,
                 labelleft = True, labelright = False)
 
+# Plot the data
 cs = ax21.pcolormesh(USDM['lon'], USDM['lat'], CovR[:,:], vmin = -1, vmax = 1, cmap = cmap, transform = ccrs.PlateCarree())
 
+# Set the location and size of the colorbar
 cbax = fig.add_axes([0.11, 0.35, 0.38, 0.015])
+
+# Create the colorbar
 cbar = fig.colorbar(cs, cax = cbax, orientation = 'horizontal')
 
+# Set the colorbar ticks
 cticks = np.round(np.arange(-1, 1.5, 0.5), 1)
 cbar.set_ticks(np.round(np.arange(-1, 1.5, 0.5), 1))
 cbar.ax.set_xticklabels(cticks, fontsize = 18)
 
-
+# Set the map extent over the U.S.
 ax21.set_extent([-129, -65, 25-1.5, 50-1.5])
 
 
 
 
 # Top right plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax12.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax12.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax12.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set local title
 ax12.set_title('Statistical Significance', fontsize = 18)
 
+# Set the tick information
 ax12.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax12.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -542,18 +630,24 @@ ax12.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = False, labeltop = True,
                 labelleft = False, labelright = True)
 
+# Plot the data
 stipple = (IntRPVal < alpha/2) | (IntRPVal > (1-alpha/2))
 ax12.pcolormesh(USDM['lon'], USDM['lat'], stipple, vmin = 0, vmax = 1, cmap = cmap_stats, transform = ccrs.PlateCarree(), zorder = 1)
 
+# Set the map extent over the U.S.
 ax12.set_extent([-129, -65, 25-1.5, 50-1.5])
 
 
 
-# Bottom left plot
+# Bottom right plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax22.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax22.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax22.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set the tick information
 ax22.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax22.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -568,38 +662,52 @@ ax22.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = True, labeltop = False,
                 labelleft = False, labelright = True)
 
+# Plot the data
 stipple = (CovRPVal < alpha/2) | (CovRPVal > (1-alpha/2))  
 ax22.pcolormesh(USDM['lon'], USDM['lat'], stipple, vmin = 0, vmax = 1, cmap = cmap_stats, transform = ccrs.PlateCarree(), zorder = 1)
 
+# Set the map extent over the U.S.
 ax22.set_extent([-129, -65, 25-1.5, 50-1.5])
 
+# Save the first plot
 plt.savefig('./Figures/USDM_DC_stats_r_all_years_SESR.png', bbox_inches = 'tight')
 plt.show(block = False)
 
 
 
+
+# Reapply the land-sea mask
 IntCompDiff[maskSub[:,:,0] == 0] = np.nan
 CovCompDiff[maskSub[:,:,0] == 0] = np.nan
+
 ### Next plot
-# Create the plot
+# Create the second plot
 fig, axes = plt.subplots(figsize = [12, 20], nrows = 2, ncols = 2, 
                              subplot_kw = {'projection': ccrs.PlateCarree()})
+
+# Set some figure parameters
 plt.subplots_adjust(left = 0.1, right = 0.9, bottom = 0.1, top = 0.9, wspace = 0.05, hspace = -0.83)
 
 ax11 = axes[0,0]; ax12 = axes[0,1]
 ax21 = axes[1,0]; ax22 = axes[1,1]
 
+# Create the main title
 fig.suptitle('Composite Mean Difference between SESR Drought Component and USDM' + '\n' + 'for April - October 2010 - 2019', fontsize = 22, y = 0.675)
 
 # Top left plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 # ax11.add_feature(cfeature.OCEAN, facecolor = 'white', zorder = 6)
 ax11.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax11.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax11.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set labels and local title
 ax11.set_title('Composite Mean Difference (unitless)', fontsize = 18)
 ax11.set_ylabel('Drought Intensity', fontsize = 16)
 
+# Set the tick information
 ax11.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax11.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -614,21 +722,27 @@ ax11.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = False, labeltop = True,
                 labelleft = True, labelright = False)
 
+# Plot the data
 cs = ax11.pcolormesh(USDM['lon'], USDM['lat'], IntCompDiff[:,:], vmin = -0.5, vmax = 0.5, cmap = cmap, transform = ccrs.PlateCarree())
 
-
+# Set the map extent over the U.S.
 ax11.set_extent([-129, -65, 25-1.5, 50-1.5])
 
 
 
 # Bottom left plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 # ax21.add_feature(cfeature.OCEAN, facecolor = 'white', zorder = 6)
 ax21.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax21.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax21.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set labels
 ax21.set_ylabel('Drought Coverage', fontsize = 16)
 
+# Set the tick information
 ax21.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax21.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -643,14 +757,19 @@ ax21.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = True, labeltop = False,
                 labelleft = True, labelright = False)
 
+# Plot the data
 cs = ax21.pcolormesh(USDM['lon'], USDM['lat'], CovCompDiff[:,:], vmin = -0.5, vmax = 0.5, cmap = cmap, transform = ccrs.PlateCarree())
 
-
+# Set the map extent over the U.S.
 ax21.set_extent([-129, -65, 25-1.5, 50-1.5])
 
+# Set the location and size of the colorbar
 cbax = fig.add_axes([0.11, 0.35, 0.38, 0.015])
+
+# Create the colorbar
 cbar = fig.colorbar(cs, cax = cbax, orientation = 'horizontal')
 
+# Set the colorbar ticks
 cticks = np.round(np.arange(-0.5, 0.75, 0.25), 2)
 cbar.set_ticks(np.round(np.arange(-0.5, 0.75, 0.25), 2))
 cbar.ax.set_xticklabels(cticks, fontsize = 18)
@@ -658,12 +777,17 @@ cbar.ax.set_xticklabels(cticks, fontsize = 18)
 
 
 # Top right plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax12.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax12.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax12.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set local title
 ax12.set_title('Statistical Significance', fontsize = 18)
 
+# Set the tick information
 ax12.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax12.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -678,18 +802,24 @@ ax12.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = False, labeltop = True,
                 labelleft = False, labelright = True)
 
+# Plot the data
 stipple = (IntCompDiffPVal < alpha/2) | (IntCompDiffPVal > (1-alpha/2))  
 ax12.pcolormesh(USDM['lon'], USDM['lat'], stipple, vmin = 0, vmax = 1, cmap = cmap_stats, transform = ccrs.PlateCarree(), zorder = 1)
 
+# Set the map extent over the U.S.
 ax12.set_extent([-129, -65, 25-1.5, 50-1.5])
 
 
 
 # Bottom right plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax22.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax22.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax22.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set the tick information
 ax22.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax22.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -704,17 +834,22 @@ ax22.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = True, labeltop = False,
                 labelleft = False, labelright = True)
 
+# Plot the data
 stipple = (CovCompDiffPVal < alpha/2) | (CovCompDiffPVal > (1-alpha/2))  
 ax22.pcolormesh(USDM['lon'], USDM['lat'], stipple, vmin = 0, vmax = 1, cmap = cmap_stats, transform = ccrs.PlateCarree(), zorder = 1)
 
+# Set the map extent over the U.S.
 ax22.set_extent([-129, -65, 25-1.5, 50-1.5])
 
+# Save the second plot
 plt.savefig('./Figures/USDM_DC_stats_CD_all_years_SESR.png', bbox_inches = 'tight')
 plt.show(block = False)
 
 
 #%%
-# Next make the truth table maps
+# cell 13
+# Next make the truth table/confusion matrix maps
+
 # Lat/Lon tick information
 lat_int = 10
 lon_int = 20
@@ -749,22 +884,33 @@ CountriesReader = shpreader.Reader(CountriesSHP)
 USGeom = [country.geometry for country in CountriesReader.records() if country.attributes['NAME'] == 'United States of America']
 NonUSGeom = [country.geometry for country in CountriesReader.records() if country.attributes['NAME'] != 'United States of America']
 
+
+
 # Create the plot
 fig, axes = plt.subplots(figsize = [12, 20], nrows = 1, ncols = 2, 
                              subplot_kw = {'projection': ccrs.PlateCarree()})
+
+# Adjust some figure parameters
 plt.subplots_adjust(left = 0.1, right = 0.9, bottom = 0.1, top = 0.9, wspace = 0.25, hspace = -0.83)
 
 ax1 = axes[0]; ax2 = axes[1]
 
+# Set the main figure title
 fig.suptitle('USDM and SESR Drought Component Truth Table for 2010 - 2019', fontsize = 22, y = 0.605)
 
+
 # Left plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax1.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax1.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax1.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set a local title
 ax1.set_title('Correct Identification', fontsize = 18)
 
+# Set the tick information
 ax1.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax1.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -779,23 +925,34 @@ ax1.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = False, labeltop = True,
                 labelleft = True, labelright = False)
 
+# Plot the data
 cs = ax1.pcolormesh(USDM['lon'], USDM['lat'], np.nanmean(YoN[:,:,:], axis = -1), vmin = -1, vmax = 1, cmap = cmap, transform = ccrs.PlateCarree())
 
+# Set the map extent over the U.S.
 ax1.set_extent([-129, -65, 25-1.5, 50-1.5])
 
+# Set the colorbar location and size
 cbax = fig.add_axes([0.10, 0.42, 0.36, 0.015])
+
+# Create the colorbar
 cbar = fig.colorbar(cs, cax = cbax, orientation = 'horizontal')
 
+# Set the colorbar ticks and labels
 cbar.set_ticks(np.round(np.arange(-1, 1+1, 2)))
 cbar.ax.set_xticklabels(['Incorrect', 'Correct'], fontsize = 18)
 
 # Top left plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax2.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax2.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax2.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set a local title
 ax2.set_title('Type of Error', fontsize = 18)
 
+# Set the tick information
 ax2.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax2.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -810,22 +967,31 @@ ax2.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = False, labeltop = True,
                 labelleft = True, labelright = False)
 
+# Plot the data
 cs = ax2.pcolormesh(USDM['lon'], USDM['lat'], np.nanmean(FPoFN[:,:,:], axis = -1), vmin = -1, vmax = 1, cmap = cmap, transform = ccrs.PlateCarree())
 
+# Set the map extent over the U.S.
 ax2.set_extent([-129, -65, 25-1.5, 50-1.5])
 
+# Set the colorbar location and size
 cbax = fig.add_axes([0.55, 0.42, 0.36, 0.015])
+
+# Create the colorbar
 cbar = fig.colorbar(cs, cax = cbax, orientation = 'horizontal')
 
+# Set the colorbar ticks and labels
 cbar.set_ticks(np.round(np.arange(-1, 1+1, 2)))
 cbar.ax.set_xticklabels(['Miss', 'False Alarm'], fontsize = 18)
 
+# Save the figure
 plt.savefig('./Figures/USDM_DC_truth_table_all_years.png', bbox_inches = 'tight')
 plt.show(block = False)
 
 
 #%%
-# Next make the truth table maps part 2
+# cell 14
+# Next make a change confusion matrix plot based on suggestions
+
 # Lat/Lon tick information
 lat_int = 10
 lon_int = 20
@@ -842,15 +1008,6 @@ clevs = np.arange(cmin, np.round(cmax+cint, 2), cint) # The np.round removes flo
 nlevs = len(clevs) - 1
 cmap = plt.get_cmap(name = 'Reds', lut = nlevs)
 
-# # Get the normalized color values
-# norm = mcolors.Normalize(vmin = cmin, vmax = cmax)
-# # # Generate the colors from the orginal color map
-# colors = cmap(np.linspace(0, 1, cmap.N))
-# colors[int(nlevs/2-1):int(nlevs/2+1),:] = np.array([1., 1., 1., 1.]) # Change the value of 0 to white
-
-# # Create a new colorbar cut from the original colors with the white inserted in the middle
-# cmap = mcolors.LinearSegmentedColormap.from_list('cut_RdBu_r', colors)
-
 # Additional shapefiles for removing non-US countries
 ShapeName = 'admin_0_countries'
 CountriesSHP = shpreader.natural_earth(resolution = '110m', category = 'cultural', name = ShapeName)
@@ -860,24 +1017,34 @@ CountriesReader = shpreader.Reader(CountriesSHP)
 USGeom = [country.geometry for country in CountriesReader.records() if country.attributes['NAME'] == 'United States of America']
 NonUSGeom = [country.geometry for country in CountriesReader.records() if country.attributes['NAME'] != 'United States of America']
 
+
+
 # Create the plot
 fig, axes = plt.subplots(figsize = [12, 20], nrows = 1, ncols = 3, 
                              subplot_kw = {'projection': ccrs.PlateCarree()})
+
+# Adjust some figure parameters
 plt.subplots_adjust(left = 0.1, right = 0.9, bottom = 0.1, top = 0.9, wspace = 0.10, hspace = -0.73)
 
 ax1 = axes[0]; ax2 = axes[1]; ax3 = axes[2]
 
+# Set the main figure title
 fig.suptitle('SESR Drought Component and USDM Confusion Matrix ' + '\n' + 'for April - October 2010 - 2019', fontsize = 22, y = 0.580)
 
 
 
 # Left plot; Correct identification frequency
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax1.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax1.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax1.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set a local title
 ax1.set_title('Frequency of Agreement', fontsize = 16)
 
+# Set the tick information
 ax1.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax1.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -892,25 +1059,27 @@ ax1.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = True, labeltop = False,
                 labelleft = True, labelright = False)
 
+# Plot the data
 cs = ax1.pcolormesh(USDM['lon'], USDM['lat'], np.nanmean(YoN[:,:,:], axis = -1)*100, vmin = 0, vmax = 100, cmap = cmap, transform = ccrs.PlateCarree())
 
+# Set the map extent over the U.S.
 ax1.set_extent([-129, -65, 25-1.5, 50-1.5])
 
-# cbax = fig.add_axes([0.10, 0.42, 0.36, 0.015])
-# cbar = fig.colorbar(cs, cax = cbax, orientation = 'horizontal')
-
-# cbar.set_ticks(np.round(np.arange(0, 100+20, 20)))
-# cbar.ax.set_xticklabels(np.round(np.arange(0, 100+20, 20)), fontsize = 18)
 
 
 
 # Center plot: False positive frequency
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax2.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax2.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax2.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set a local title
 ax2.set_title('Frequency of False Positives', fontsize = 16)
 
+# Set the tick information
 ax2.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax2.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -925,25 +1094,28 @@ ax2.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = True, labeltop = False,
                 labelleft = False, labelright = False)
 
+# Plot the data
 cs = ax2.pcolormesh(USDM['lon'], USDM['lat'], np.nanmean(FP[:,:,:], axis = -1)*100, vmin = 0, vmax = 100, cmap = cmap, transform = ccrs.PlateCarree())
 
+# Set the map extent over the U.S.
 ax2.set_extent([-129, -65, 25-1.5, 50-1.5])
 
-# cbax = fig.add_axes([0.55, 0.42, 0.36, 0.015])
-# cbar = fig.colorbar(cs, cax = cbax, orientation = 'horizontal')
 
-# cbar.set_ticks(np.round(np.arange(0, 100+20, 20)))
-# cbar.ax.set_xticklabels(np.round(np.arange(0, 100+20, 20)), fontsize = 18)
 
 
 
 # Right plot: False negative frequency
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax3.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax3.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax3.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set a local title
 ax3.set_title('Frequency of False Negative', fontsize = 16)
 
+# Set the tick information
 ax3.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax3.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -958,22 +1130,30 @@ ax3.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = True, labeltop = False,
                 labelleft = False, labelright = True)
 
+# Plot the data
 cs = ax3.pcolormesh(USDM['lon'], USDM['lat'], np.nanmean(FN[:,:,:], axis = -1)*100, vmin = 0, vmax = 100, cmap = cmap, transform = ccrs.PlateCarree())
 
+# Set the map extent over the U.S.
 ax3.set_extent([-129, -65, 25-1.5, 50-1.5])
 
+# Set the colorbar location and size
 cbax = fig.add_axes([0.10, 0.435, 0.80, 0.012])
+
+# Create the colorbar
 cbar = fig.colorbar(cs, cax = cbax, orientation = 'horizontal')
 
+# Set the colorbar ticks and labels
 cbar.set_ticks(np.round(np.arange(0, 100+20, 20)))
 cbar.ax.set_xticklabels(np.round(np.arange(0, 100+20, 20)), fontsize = 18)
 
 cbar.ax.set_xlabel('Frequency of Agreement/Error Type (%)', fontsize = 18)
 
+# Save the figure
 plt.savefig('./Figures/USDM_DC_truth_table_all_years_version2.png', bbox_inches = 'tight')
 plt.show(block = False)
 #%%
-# Repear the above for a given year.
+# cell 15
+# Repeat the above figures for a given year (an addition to case studies).
 Year = 2012
 
 # Find the values corresponding to the given year.
@@ -984,7 +1164,7 @@ DCYear = DCgrow[:,:,YearInd]
 YoNYear = YoN[:,:,YearInd]
 FPoFNYear = FPoFN[:,:,YearInd]
 
-# Rerun the stats for the given year.
+# Rerun the statistics calculations for the given year.
 I, J, T = DCYear.shape
 
 DCcovYear = np.zeros((I, J, T))
@@ -993,12 +1173,14 @@ USDMcovYear = np.zeros((I, J, T))
 DCcovYear[DCYear >= 1] = 1
 USDMcovYear[USDMYear >= 1] = 1
 
+# Statistics calculations for drought intensity and coverage
 IntRYear, IntRPValYear = CorrCoef(USDMYear, DCYear)
 IntCompDiffYear, IntCompDiffPValYear = CompositeDifference(USDMYear, DCYear)
 
-
+# Staistics calculations for drought coverage only
 CovRYear, CovRPValYear = CorrCoef(USDMcovYear, DCcovYear)
 CovCompDiffYear, CovCompDiffPValYear = CompositeDifference(USDMcovYear, DCcovYear)
+
 
 # Most to all values that are exactly 0 should be nan only grids.
 IntCompDiffYear[IntCompDiffYear == 0] = np.nan
@@ -1007,8 +1189,10 @@ CovCompDiffYear[CovCompDiffYear == 0] = np.nan
 IntCompDiffYear[maskSub[:,:,0] == 0] = np.nan
 CovCompDiffYear[maskSub[:,:,0] == 0] = np.nan
 
+
+
 # Create the plots
-alpha = 0.05
+alpha = 0.05 # Statistical significance level
 
 # Lat/Lon tick information
 lat_int = 10
@@ -1042,24 +1226,32 @@ CountriesReader = shpreader.Reader(CountriesSHP)
 USGeom = [country.geometry for country in CountriesReader.records() if country.attributes['NAME'] == 'United States of America']
 NonUSGeom = [country.geometry for country in CountriesReader.records() if country.attributes['NAME'] != 'United States of America']
 
-# Create the plot
+# Create the first plot
 fig, axes = plt.subplots(figsize = [12, 20], nrows = 2, ncols = 2, 
                              subplot_kw = {'projection': ccrs.PlateCarree()})
+
+# Adjust some figure parameters
 plt.subplots_adjust(left = 0.1, right = 0.9, bottom = 0.1, top = 0.9, wspace = 0.05, hspace = -0.83)
 
 ax11 = axes[0,0]; ax12 = axes[0,1]
 ax21 = axes[1,0]; ax22 = axes[1,1]
 
+# Set the main figure title
 fig.suptitle('SESR Drought Component and USDM Correlation Coefficient' + '\n'+ 'for April - October ' + str(Year), fontsize = 22, y = 0.675)
 
 # Top left plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax11.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax11.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax11.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set labels and local title
 ax11.set_title('Correlation Coefficient (unitless)', fontsize = 18)
 ax11.set_ylabel('Drought Intensity', fontsize = 16)
 
+# Set the tick information
 ax11.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax11.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -1074,19 +1266,26 @@ ax11.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = False, labeltop = True,
                 labelleft = True, labelright = False)
 
+# Plot the data
 cs = ax11.pcolormesh(USDM['lon'], USDM['lat'], IntRYear[:,:], vmin = -1, vmax = 1, cmap = cmap, transform = ccrs.PlateCarree(), zorder = 0)
 
+# Set the map extent over the U.S.
 ax11.set_extent([-129, -65, 25-1.5, 50-1.5])
 
 
 
 # Bottom left plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax21.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax21.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax21.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set labels
 ax21.set_ylabel('Drought Coverage', fontsize = 16)
 
+# Set the tick information
 ax21.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax21.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -1101,28 +1300,38 @@ ax21.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = True, labeltop = False,
                 labelleft = True, labelright = False)
 
+# Plot the data
 cs = ax21.pcolormesh(USDM['lon'], USDM['lat'], CovRYear[:,:], vmin = -1, vmax = 1, cmap = cmap, transform = ccrs.PlateCarree())
 
+# Set the colorbar location and size
 cbax = fig.add_axes([0.11, 0.35, 0.38, 0.015])
+
+# Create the colorbar
 cbar = fig.colorbar(cs, cax = cbax, orientation = 'horizontal')
 
+# Set the colorbar ticks and labels
 cticks = np.round(np.arange(-1, 1.5, 0.5), 1)
 cbar.set_ticks(np.round(np.arange(-1, 1.5, 0.5), 1))
 cbar.ax.set_xticklabels(cticks, fontsize = 18)
 
-
+# Set the map extent over the U.S.
 ax21.set_extent([-129, -65, 25-1.5, 50-1.5])
 
 
 
 
 # Top right plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax12.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax12.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax12.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set local title
 ax12.set_title('Statistical Significance', fontsize = 18)
 
+# Set the tick information
 ax12.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax12.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -1137,18 +1346,24 @@ ax12.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = False, labeltop = True,
                 labelleft = False, labelright = True)
 
+# Plot the data
 stipple = (IntRPValYear < alpha/2) | (IntRPValYear > (1-alpha/2))
 ax12.pcolormesh(USDM['lon'], USDM['lat'], stipple, vmin = 0, vmax = 1, cmap = cmap_stats, transform = ccrs.PlateCarree(), zorder = 1)
 
+# Set the map extent over the U.S.
 ax12.set_extent([-129, -65, 25-1.5, 50-1.5])
 
 
 
 # Bottom right plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax22.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax22.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax22.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set the tick information
 ax22.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax22.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -1163,37 +1378,50 @@ ax22.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = True, labeltop = False,
                 labelleft = False, labelright = True)
 
+# Plot the data
 stipple = (CovRPValYear < alpha/2) | (CovRPValYear > (1-alpha/2))  
 ax22.pcolormesh(USDM['lon'], USDM['lat'], stipple, vmin = 0, vmax = 1, cmap = cmap_stats, transform = ccrs.PlateCarree(), zorder = 1)
 
+# Set the map extent over the U.S.
 ax22.set_extent([-129, -65, 25-1.5, 50-1.5])
 
+# Save the first figure
 plt.savefig('./Figures/USDM_DC_stats_r_' + str(Year) + '.png', bbox_inches = 'tight')
 plt.show(block = False)
 
 
 
 
+
+
 ### Next plot
-# Create the plot
+# Create the second plot
 fig, axes = plt.subplots(figsize = [12, 20], nrows = 2, ncols = 2, 
                              subplot_kw = {'projection': ccrs.PlateCarree()})
+
+# Adjust some figure parameters
 plt.subplots_adjust(left = 0.1, right = 0.9, bottom = 0.1, top = 0.9, wspace = 0.05, hspace = -0.83)
 
 ax11 = axes[0,0]; ax12 = axes[0,1]
 ax21 = axes[1,0]; ax22 = axes[1,1]
 
+# Set the main figure title
 fig.suptitle('Composite Mean Difference between SESR Drought Component and USDM' + '\n' + 'for April - October ' + str(Year), fontsize = 22, y = 0.675)
 
 # Top left plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 #ax11.add_feature(cfeature.OCEAN, facecolor = 'white', zorder = 6)
 ax11.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax11.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax11.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set labels and local title
 ax11.set_title('Composite Mean Difference (unitless)', fontsize = 18)
 ax11.set_ylabel('Drought Intensity', fontsize = 16)
 
+# Set the tick information
 ax11.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax11.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -1208,21 +1436,27 @@ ax11.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = False, labeltop = True,
                 labelleft = True, labelright = False)
 
+# Plot the data
 cs = ax11.pcolormesh(USDM['lon'], USDM['lat'], IntCompDiffYear[:,:], vmin = -0.5, vmax = 0.5, cmap = cmap, transform = ccrs.PlateCarree())
 
-
+# Set the map extent over the U.S.
 ax11.set_extent([-129, -65, 25-1.5, 50-1.5])
 
 
 
 # Bottom left plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 #ax21.add_feature(cfeature.OCEAN, facecolor = 'white', zorder = 6)
 ax21.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax21.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax21.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set labels
 ax21.set_ylabel('Drought Coverage', fontsize = 16)
 
+# Set the tick information
 ax21.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax21.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -1237,14 +1471,19 @@ ax21.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = True, labeltop = False,
                 labelleft = True, labelright = False)
 
+# Plot the data
 cs = ax21.pcolormesh(USDM['lon'], USDM['lat'], CovCompDiffYear[:,:], vmin = -0.5, vmax = 0.5, cmap = cmap, transform = ccrs.PlateCarree())
 
-
+# Set the map extent over the U.S.
 ax21.set_extent([-129, -65, 25-1.5, 50-1.5])
 
+# Set the colorbar location and size
 cbax = fig.add_axes([0.11, 0.35, 0.38, 0.015])
+
+# Create the colorbar
 cbar = fig.colorbar(cs, cax = cbax, orientation = 'horizontal')
 
+# Set the colorbar ticks and labels
 cticks = np.round(np.arange(-0.5, 0.75, 0.25), 2)
 cbar.set_ticks(np.round(np.arange(-0.5, 0.75, 0.25), 2))
 cbar.ax.set_xticklabels(cticks, fontsize = 18)
@@ -1252,12 +1491,17 @@ cbar.ax.set_xticklabels(cticks, fontsize = 18)
 
 
 # Top right plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax12.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax12.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax12.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set local title
 ax12.set_title('Statistical Significance', fontsize = 18)
 
+# Set the tick information
 ax12.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax12.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -1272,18 +1516,24 @@ ax12.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = False, labeltop = True,
                 labelleft = False, labelright = True)
 
+# Plot the data
 stipple = (IntCompDiffPValYear < alpha/2) | (IntCompDiffPValYear > (1-alpha/2))  
 ax12.pcolormesh(USDM['lon'], USDM['lat'], stipple, vmin = 0, vmax = 1, cmap = cmap_stats, transform = ccrs.PlateCarree(), zorder = 1)
 
+# Set the map extent over the U.S.
 ax12.set_extent([-129, -65, 25-1.5, 50-1.5])
 
 
 
 # Bottom right plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax22.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax22.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax22.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set the tick information
 ax22.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax22.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -1298,34 +1548,48 @@ ax22.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = True, labeltop = False,
                 labelleft = False, labelright = True)
 
+# Plot the data
 stipple = (CovCompDiffPValYear < alpha/2) | (CovCompDiffPValYear > (1-alpha/2))  
 ax22.pcolormesh(USDM['lon'], USDM['lat'], stipple, vmin = 0, vmax = 1, cmap = cmap_stats, transform = ccrs.PlateCarree(), zorder = 1)
 
+# Set the map extent over the U.S.
 ax22.set_extent([-129, -65, 25-1.5, 50-1.5])
 
+# Save the second figure
 plt.savefig('./Figures/USDM_DC_stats_CD_' + str(Year) + '.png', bbox_inches = 'tight')
 plt.show(block = False)
+
+
+
 
 
 # Next make the truth table maps
 # Reuse the colorbar, lat/lon tick, and shapefile information.
 
-# Create the plot
+# Create the third plot
 fig, axes = plt.subplots(figsize = [12, 20], nrows = 1, ncols = 2, 
                              subplot_kw = {'projection': ccrs.PlateCarree()})
+
+# Adjust some figure parameters
 plt.subplots_adjust(left = 0.1, right = 0.9, bottom = 0.1, top = 0.9, wspace = 0.25, hspace = -0.83)
 
 ax1 = axes[0]; ax2 = axes[1]
 
+# Set the main figure title
 fig.suptitle('USDM and SESR Drought Component Truth Table for ' + str(Year), fontsize = 22, y = 0.605)
 
 # Left plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax1.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax1.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax1.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set local title
 ax1.set_title('Correct Identification', fontsize = 18)
 
+# Set the tick information
 ax1.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax1.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -1340,23 +1604,36 @@ ax1.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = False, labeltop = True,
                 labelleft = True, labelright = False)
 
+# Plot the data
 cs = ax1.pcolormesh(USDM['lon'], USDM['lat'], np.nanmean(YoNYear[:,:,:], axis = -1), vmin = -1, vmax = 1, cmap = cmap, transform = ccrs.PlateCarree())
 
+# Set the map extent over the U.S.
 ax1.set_extent([-129, -65, 25-1.5, 50-1.5])
 
+# Set the colorbar location and size
 cbax = fig.add_axes([0.10, 0.42, 0.36, 0.015])
+
+# Create the colorbar
 cbar = fig.colorbar(cs, cax = cbax, orientation = 'horizontal')
 
+# Set the colorbar ticks and labels
 cbar.set_ticks(np.round(np.arange(-1, 1+1, 2)))
 cbar.ax.set_xticklabels(['Incorrect', 'Correct'], fontsize = 18)
 
+
+
 # Top left plot
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
 ax2.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
 ax2.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
 ax2.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
+# Set local title
 ax2.set_title('Type of Error', fontsize = 18)
 
+# Set the tick information
 ax2.set_xticks(LonLabel, crs = ccrs.PlateCarree())
 ax2.set_yticks(LatLabel, crs = ccrs.PlateCarree())
 
@@ -1371,15 +1648,22 @@ ax2.tick_params(axis = 'both', which = 'major', length = 2, width = 1,
                 right = True, labelbottom = False, labeltop = True,
                 labelleft = True, labelright = False)
 
+# Plot the data
 cs = ax2.pcolormesh(USDM['lon'], USDM['lat'], np.nanmean(FPoFNYear[:,:,:], axis = -1), vmin = -1, vmax = 1, cmap = cmap, transform = ccrs.PlateCarree())
 
+# Set the map extent over the U.S.
 ax2.set_extent([-129, -65, 25-1.5, 50-1.5])
 
+# Set the colorbar location and size
 cbax = fig.add_axes([0.55, 0.42, 0.36, 0.015])
+
+# Create the colorbar
 cbar = fig.colorbar(cs, cax = cbax, orientation = 'horizontal')
 
+# Set the colorbar ticks and labels
 cbar.set_ticks(np.round(np.arange(-1, 1+1, 2)))
 cbar.ax.set_xticklabels(['Miss', 'False Alarm'], fontsize = 18)
 
+# Save the third figure
 plt.savefig('./Figures/USDM_DC_truth_table_' + str(Year) + '.png', bbox_inches = 'tight')
 plt.show(block = False)
