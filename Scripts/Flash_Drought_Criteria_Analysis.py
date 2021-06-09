@@ -576,6 +576,11 @@ Sdsesr2d = Sdsesr.reshape(I*J, T, order = 'F')
 # Use the algorithm to identify flash drought for the NARR.
 # Find criteria for the NARR
 
+#### Note: This algorithm still needs to be optimized. Depending on the computer
+#### and datasize, this cell can take a few minutes to days to run. For my (Stuart Edris)
+#### work computer, running the entire NARR grid (subsetted to the U.S.) on the pentad
+#### timescale takes about 5 days to a week to run.
+
 # Next three lines are used to run the algorithm for only 2012 and test the algorithm
 YearSelect = 2012
 YearInd = np.where(dsesr['year'] == 2012)[0]
