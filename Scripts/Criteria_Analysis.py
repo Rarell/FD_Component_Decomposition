@@ -1415,10 +1415,183 @@ for i in ax4.xaxis.get_ticklabels() + ax4.yaxis.get_ticklabels():
 
 # Save the figure
 plt.savefig('./Figures/Climatology_Time_series.png')
-plt.show(block = 'False')
+plt.show(block = False)
+
 
 #%%
 # cell 35
+# Create a contingency table for the rapid intensification and flash drought
+
+# Note only scenario (rapid intensification occurred, flash drought did not) yields non-zero or non-100% values
+I, J, T = c4['c4'].shape
+
+RInd = np.ones((I, J, T)) * np.nan # RInd: Rapid Intensification, no drought occurred
+RId  = np.ones((I, J, T)) * np.nan # RId: Rapid Intensification, drought occurred
+
+# Reshape the variables for less embedded loops
+RInd = RInd.reshape(I*J, T, order = 'F')
+RId  = RId.reshape(I*J, T, order = 'F')
+
+FD2d = FD['FD'].reshape(I*J, T, order = 'F')
+RI2d = c4['c4'].reshape(I*J, T, order = 'F')
+
+# Find the rapid intensification without drought (in which case flash drought is 0)
+for ij in range(I*J):
+    for t in range(T):
+        if (RI2d[ij,t] == 1) & (FD2d[ij,t] == 0):
+            RInd[ij,t] = 1
+            RId[ij,t]  = 0
+        elif (RI2d[ij,t] == 1) & (FD2d[ij,t] == 1):
+            RInd[ij,t] = 0
+            RId[ij,t]  = 1
+        else:
+            RInd[ij,t] = np.nan
+            RId[ij,t]  = np.nan
+            
+# Reshape the variables back into a 3D array
+RInd = RInd.reshape(I, J, T, order = 'F')
+RId  = RId.reshape(I, J, T, order = 'F')
+
+# Apply thte land-sea mask
+RInd[maskSub[:,:,0] == 0] = np.nan
+RId[maskSub[:,:,0] == 0] = np.nan
+
+#%%
+# cell 36
+# Plot the contingency table
+
+# Focus on the growing season
+ind = np.where( (c4['month'] >= 4) & (c4['month'] <= 10) )[0]
+
+
+# Set colorbar information
+cmin = 0; cmax = 100; cint = 1
+clevs = np.arange(cmin, cmax + cint, cint)
+nlevs = len(clevs)
+cmap  = plt.get_cmap(name = 'Reds', lut = nlevs)
+
+
+# Shapefile information
+# ShapeName = 'Admin_1_states_provinces_lakes_shp'
+ShapeName = 'admin_0_countries'
+CountriesSHP = shpreader.natural_earth(resolution = '110m', category = 'cultural', name = ShapeName)
+
+CountriesReader = shpreader.Reader(CountriesSHP)
+
+USGeom = [country.geometry for country in CountriesReader.records() if country.attributes['NAME'] == 'United States of America']
+NonUSGeom = [country.geometry for country in CountriesReader.records() if country.attributes['NAME'] != 'United States of America']
+
+# Lonitude and latitude tick information
+lat_int = 10
+lon_int = 20
+
+LatLabel = np.arange(-90, 90, lat_int)
+LonLabel = np.arange(-180, 180, lon_int)
+
+LonFormatter = cticker.LongitudeFormatter()
+LatFormatter = cticker.LatitudeFormatter()
+
+# Projection information
+data_proj = ccrs.PlateCarree()
+fig_proj  = ccrs.PlateCarree()
+
+
+
+# Create the plots
+fig = plt.figure(figsize = [12, 10])
+
+
+# Rapid intensification without drought plot
+ax1 = fig.add_subplot(1, 2, 1, projection = fig_proj)
+
+# Left plot; Correct identification frequency
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
+ax1.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
+ax1.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
+ax1.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
+
+# Set a local title
+ax1.set_title('Frequency of Rapid Intensification Events' + '\n' + 'without Drought', fontsize = 16)
+
+# Set the tick information
+ax1.set_xticks(LonLabel, crs = ccrs.PlateCarree())
+ax1.set_yticks(LatLabel, crs = ccrs.PlateCarree())
+
+ax1.set_yticklabels(LatLabel, fontsize = 16)
+ax1.set_xticklabels(LonLabel, fontsize = 16)
+
+ax1.xaxis.set_major_formatter(LonFormatter)
+ax1.yaxis.set_major_formatter(LatFormatter)
+
+ax1.tick_params(axis = 'both', which = 'major', length = 3, width = 1,
+                labelsize = 16, bottom = True, top = True, left = True,
+                right = True, labelbottom = True, labeltop = False,
+                labelleft = True, labelright = False)
+
+# Plot the data
+cs = ax1.pcolormesh(c4['lon'], c4['lat'], np.nanmean(RInd[:,:,ind], axis = -1)*100, vmin = cmin, vmax = cmax, cmap = cmap, transform = ccrs.PlateCarree())
+
+# Set the map extent over the U.S.
+ax1.set_extent([-129, -65, 25-1.5, 50-1.5])
+
+
+
+# Rapid intensification with drought plot
+ax2 = fig.add_subplot(1, 2, 2, projection = fig_proj)
+
+# Left plot; Correct identification frequency
+
+# Add features
+# Ocean and non-U.S. countries covers and "masks" data outside the U.S.
+ax2.add_feature(cfeature.STATES, edgecolor = 'black', zorder = 6)
+ax2.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edgecolor = 'white', zorder = 2)
+ax2.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
+
+# Set a local title
+ax2.set_title('Frequency of Rapid Intensification Events' + '\n' + 'with Drought', fontsize = 16)
+
+# Set the tick information
+ax2.set_xticks(LonLabel, crs = ccrs.PlateCarree())
+ax2.set_yticks(LatLabel, crs = ccrs.PlateCarree())
+
+ax2.set_yticklabels(LatLabel, fontsize = 16)
+ax2.set_xticklabels(LonLabel, fontsize = 16)
+
+ax2.xaxis.set_major_formatter(LonFormatter)
+ax2.yaxis.set_major_formatter(LatFormatter)
+
+ax2.tick_params(axis = 'both', which = 'major', length = 3, width = 1,
+                labelsize = 16, bottom = True, top = True, left = True,
+                right = True, labelbottom = True, labeltop = False,
+                labelleft = False, labelright = True)
+
+# Plot the data
+cs = ax2.pcolormesh(c4['lon'], c4['lat'], np.nanmean(RId[:,:,ind], axis = -1)*100, vmin = cmin, vmax = cmax, cmap = cmap, transform = ccrs.PlateCarree())
+
+# Set the map extent over the U.S.
+ax2.set_extent([-129, -65, 25-1.5, 50-1.5])
+
+
+# Set the colorbar location and size
+cbax = fig.add_axes([0.125, 0.345, 0.775, 0.022])
+
+# Create the colorbar
+cbar = fig.colorbar(cs, cax = cbax, orientation = 'horizontal')
+
+# Set the colorbar ticks and labels
+cbar.set_ticks(np.round(np.arange(0, 100+20, 20)))
+cbar.ax.set_xticklabels(np.round(np.arange(0, 100+20, 20)), fontsize = 18)
+
+cbar.ax.set_xlabel('Frequency of Events (%)', fontsize = 18)
+
+# Save the figure
+plt.savefig('./Figures/Rapid_Intensification_Contingency_Table.png')
+plt.show(block = False)
+
+#%%
+# cell 37
 # Some early plots to plot/represent statistical significance
 
 # Statistical significance level
@@ -1542,7 +1715,7 @@ plt.show(block = False)
     
 
 #%%
-# cell 36
+# cell 38
 # Creating some figures for a seminar
 
 # Define some variables
@@ -1644,7 +1817,7 @@ cbar = mcolorbar.ColorbarBase(cbax, cmap = ColorMap, norm = norm, orientation = 
 cbar.ax.set_ylabel('% of days with rapid intensification', fontsize = 14)
 
 #%%
-# # cell 37
+# # cell 39
 # # Multiple month plots for the seminar slides
 
 # # Initialize some variables
@@ -1831,7 +2004,7 @@ cbar.ax.set_ylabel('% of days with rapid intensification', fontsize = 14)
 
 
 #%%
-# cell 38
+# cell 40
 # One more seminar figure
 # This the climatological figure for FD and FC
 
@@ -1961,7 +2134,7 @@ cbar.set_ticks(np.arange(0, 90, 10))
 
 
 #%%
-# cell 39
+# cell 41
 # Some checks to ensure the accuracy of the data and calculations 
 # (namely that the FD algorithm in Flash_Drought_Criteria_Analysis is correct)
 
@@ -2064,7 +2237,7 @@ mdSelect = np.nanmean(md2d[ind,:], axis = 0)
 TimeYear = DP['ymd'][tind]
 
 #%%
-# cell 40
+# cell 42
 # Plot the SESR time series
 
 
@@ -2137,7 +2310,7 @@ plt.savefig(OutPath + SaveName, bbox_inches = 'tight')
 plt.show(block = False)
 
 #%%
-# cell 41
+# cell 43
 # Write the time series to a .csv for additional comparisons with the Christian et al. 2019 data
 
 # Define the filename and path to save the data to
@@ -2158,7 +2331,7 @@ for n in range(len(DPSelect)):
 file.close() # Close the file after it is written
 
 #%%
-# cell 42
+# cell 44
 # Plot the cumulative flash drought with a point to see where the coordinate point is
 
 # Some user defined constants
@@ -2247,7 +2420,7 @@ ax.set_extent([-129, -65, 25-1.5, 50-1.5])
 plt.show(block = False)
 
 #%%
-# cell 43
+# cell 45
 # Calculate the monthly drought intensity. This was used to examine drought intensity and develop and test the current CaseStudy function
 
 # Define the year to be examined
@@ -2276,7 +2449,7 @@ DroughtIntensityMaps(MonC2, MonDI, FD['lon'], FD['lat'], -130, -65, 25, 50, Fals
 
 
 #%%
-# cell 44
+# cell 46
 # Plot the monthly drought intensity to check the function and ensure it works. 
 # This was used to examine drought intensity and develop and test the current CaseStudy function
 
@@ -2349,7 +2522,7 @@ cbar.ax.set_xticklabels(['No Drought', 'Moderate', 'Severe', 'Extreme', 'Excepti
 plt.show(block = False)
     
 #%%
-# cell 45
+# cell 47
 # Plot the cumulative FC
 # This is used to examine the cumulative flash drought and compare it to cumulative map (Figure 2) in Basara et al. 2019
 # Note this is used as a supplementary figure in the thesis
