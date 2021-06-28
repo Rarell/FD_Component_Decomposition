@@ -1590,8 +1590,113 @@ cbar.ax.set_xlabel('Frequency of Events (%)', fontsize = 18)
 plt.savefig('./Figures/Rapid_Intensification_Contingency_Table.png')
 plt.show(block = False)
 
+
 #%%
 # cell 37
+# Calculate threat scores and equitable threat scores
+
+# Initialize some variables
+TS  = np.ones((T)) * np.nan
+ETS = np.ones((T)) * np.nan
+
+# Calculate the land total grid points (The total value of a contingency table is the number of land grid points)
+total = np.nansum(maskSub)
+
+# The threat scores will be a ratio of rapid intensifications that reach drought.
+# Therefore, the 'hits' are flash droughts, and 'misses' are rapid intensifications without drought.
+# There are no 'false alarms' because FD is always 0 when c4 is 0.
+for t in range(T):
+    hits = np.nansum(RId[:,:,t])
+    misses = np.nansum(RInd[:,:,t])
+    false_alarm = 0
+    
+    # Calculate the threat score
+    TS[t] = hits/(hits + misses + false_alarm)
+    
+    # Calculate the equitable threat score
+    hits_rand = (hits + misses)*(hits + false_alarm)/total
+    
+    ETS[t] = (hits - hits_rand)/(hits + misses + false_alarm - hits_rand)
+
+
+# Average the threat scores to monthly values to reduce noise
+MonSize = len(np.unique(FD['month'])) * len(np.unique(FD['year']))
+
+TSmon  = np.ones((MonSize)) * np.nan
+ETSmon = np.ones((MonSize)) * np.nan
+
+mon  = FD['month'][0]
+year = FD['year'][0]
+for m in range(MonSize):
+    ind = np.where( (mon == FD['month']) & (year == FD['year']) )[0]
+    TSmon[m]  = np.nanmean(TS[ind])
+    ETSmon[m] = np.nanmean(ETS[ind])
+    
+    # If the current month averaged over is December, increment the year and reset the month
+    if mon == FD['month'][-1]:
+        year = year + 1
+        mon  = FD['month'][0]
+    else:
+        mon = mon + 1
+        
+        
+# Average the threat scores to yearly values to reduce noise
+YearSize = len(np.unique(FD['year']))
+
+TSyear  = np.ones((YearSize)) * np.nan
+ETSyear = np.ones((YearSize)) * np.nan
+
+for n, y in enumerate(np.unique(FD['year'])):
+    ind = np.where( (FD['month'] >= 4) & (FD['month'] <= 10) & (FD['year'] == y) )[0]
+    
+    TSyear[n]  = np.nanmean(TS[ind])
+    ETSyear[n] = np.nanmean(ETS[ind])
+
+#%%
+# cell 38
+# Plot the threat scores
+
+# Create the plot
+# Create the figure
+fig = plt.figure(figsize = [18, 10])
+
+# Adjust some of the figure parameters
+plt.subplots_adjust(left = 0.05, right = 0.95, bottom = 0.05, top = 0.95, wspace = 0.25, hspace = 0.25)
+
+
+
+ax1 = fig.add_subplot(1, 2, 1) # Entry 1 is nrows, entry 2 is ncols, and entry 3 is index
+
+ax1.plot(np.arange(1, YearSize+1), TSyear, 'r-', label = 'TS')
+
+# Set the axis labels
+ax1.set_xlabel('Time', size = 18)
+ax1.set_ylabel('Threat Score', size = 14)
+
+# Set the ticks
+#ax1.xaxis.set_major_formatter(DateFMT)
+
+for i in ax1.xaxis.get_ticklabels() + ax1.yaxis.get_ticklabels():
+    i.set_size(18)
+    
+
+
+ax2 = fig.add_subplot(1, 2, 2) # Entry 1 is nrows, entry 2 is ncols, and entry 3 is index
+
+ax2.plot(np.arange(1, YearSize+1), ETSyear, 'r-', label = 'ETS')
+
+# Set the axis labels
+ax2.set_xlabel('Time', size = 18)
+ax2.set_ylabel('Equitable Threat Score', size = 14)
+
+# Set the ticks
+#ax2.xaxis.set_major_formatter(DateFMT)
+
+for i in ax2.xaxis.get_ticklabels() + ax2.yaxis.get_ticklabels():
+    i.set_size(18)
+
+#%%
+# cell 39
 # Some early plots to plot/represent statistical significance
 
 # Statistical significance level
@@ -1715,7 +1820,7 @@ plt.show(block = False)
     
 
 #%%
-# cell 38
+# cell 40
 # Creating some figures for a seminar
 
 # Define some variables
@@ -1817,7 +1922,7 @@ cbar = mcolorbar.ColorbarBase(cbax, cmap = ColorMap, norm = norm, orientation = 
 cbar.ax.set_ylabel('% of days with rapid intensification', fontsize = 14)
 
 #%%
-# # cell 39
+# # cell 41
 # # Multiple month plots for the seminar slides
 
 # # Initialize some variables
@@ -2004,7 +2109,7 @@ cbar.ax.set_ylabel('% of days with rapid intensification', fontsize = 14)
 
 
 #%%
-# cell 40
+# cell 42
 # One more seminar figure
 # This the climatological figure for FD and FC
 
@@ -2134,7 +2239,7 @@ cbar.set_ticks(np.arange(0, 90, 10))
 
 
 #%%
-# cell 41
+# cell 43
 # Some checks to ensure the accuracy of the data and calculations 
 # (namely that the FD algorithm in Flash_Drought_Criteria_Analysis is correct)
 
@@ -2237,7 +2342,7 @@ mdSelect = np.nanmean(md2d[ind,:], axis = 0)
 TimeYear = DP['ymd'][tind]
 
 #%%
-# cell 42
+# cell 44
 # Plot the SESR time series
 
 
@@ -2310,7 +2415,7 @@ plt.savefig(OutPath + SaveName, bbox_inches = 'tight')
 plt.show(block = False)
 
 #%%
-# cell 43
+# cell 45
 # Write the time series to a .csv for additional comparisons with the Christian et al. 2019 data
 
 # Define the filename and path to save the data to
@@ -2331,7 +2436,7 @@ for n in range(len(DPSelect)):
 file.close() # Close the file after it is written
 
 #%%
-# cell 44
+# cell 46
 # Plot the cumulative flash drought with a point to see where the coordinate point is
 
 # Some user defined constants
@@ -2420,7 +2525,7 @@ ax.set_extent([-129, -65, 25-1.5, 50-1.5])
 plt.show(block = False)
 
 #%%
-# cell 45
+# cell 47
 # Calculate the monthly drought intensity. This was used to examine drought intensity and develop and test the current CaseStudy function
 
 # Define the year to be examined
@@ -2449,7 +2554,7 @@ DroughtIntensityMaps(MonC2, MonDI, FD['lon'], FD['lat'], -130, -65, 25, 50, Fals
 
 
 #%%
-# cell 46
+# cell 48
 # Plot the monthly drought intensity to check the function and ensure it works. 
 # This was used to examine drought intensity and develop and test the current CaseStudy function
 
@@ -2522,7 +2627,7 @@ cbar.ax.set_xticklabels(['No Drought', 'Moderate', 'Severe', 'Extreme', 'Excepti
 plt.show(block = False)
     
 #%%
-# cell 47
+# cell 49
 # Plot the cumulative FC
 # This is used to examine the cumulative flash drought and compare it to cumulative map (Figure 2) in Basara et al. 2019
 # Note this is used as a supplementary figure in the thesis
