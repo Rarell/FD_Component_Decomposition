@@ -1595,28 +1595,54 @@ plt.show(block = False)
 # cell 37
 # Calculate threat scores and equitable threat scores
 
+
+# Perform the calculations for the 'eastern' U.S. as well.
+# 'East' of the Rocky Mountains is considered east of the Colorado Piedmont (105 W)
+LonMin = - 105
+
+# Subset the data to 'east' of the Rockies
+maskSubEast, LatSub, LonSub = SubsetData(maskNew, lat, lon, LatMin, LatMax, LonMin, LonMax)
+RIndEast, LatSub, LonSub   = SubsetData(RInd, FD['lat'], FD['lon'], LatMin, LatMax, LonMin, LonMax)
+RIdEast, LatSub, LonSub   = SubsetData(RId, FD['lat'], FD['lon'], LatMin, LatMax, LonMin, LonMax)
+
 # Initialize some variables
 TS  = np.ones((T)) * np.nan
 ETS = np.ones((T)) * np.nan
 
+TSeast  = np.ones((T)) * np.nan
+ETSeast = np.ones((T)) * np.nan
+
+
 # Calculate the land total grid points (The total value of a contingency table is the number of land grid points)
 total = np.nansum(maskSub)
+
+totalEast = np.nansum(maskSubEast)
 
 # The threat scores will be a ratio of rapid intensifications that reach drought.
 # Therefore, the 'hits' are flash droughts, and 'misses' are rapid intensifications without drought.
 # There are no 'false alarms' because FD is always 0 when c4 is 0.
 for t in range(T):
-    hits = np.nansum(RId[:,:,t])
+    hits   = np.nansum(RId[:,:,t])
     misses = np.nansum(RInd[:,:,t])
     false_alarm = 0
+    
+    hitsEast   = np.nansum(RIdEast[:,:,t])
+    missesEast = np.nansum(RIndEast[:,:,t])
+    false_alarmEast = 0
     
     # Calculate the threat score
     TS[t] = hits/(hits + misses + false_alarm)
     
+    TSeast[t] = hitsEast/(hitsEast + missesEast + false_alarmEast)
+    
     # Calculate the equitable threat score
     hits_rand = (hits + misses)*(hits + false_alarm)/total
     
+    hits_randEast = (hitsEast + missesEast)*(hitsEast + false_alarmEast)/totalEast
+    
     ETS[t] = (hits - hits_rand)/(hits + misses + false_alarm - hits_rand)
+    
+    ETSeast[t] = (hitsEast - hits_randEast)/(hitsEast + missesEast + false_alarmEast - hits_randEast)
 
 
 # Average the threat scores to monthly values to reduce noise
@@ -1625,12 +1651,18 @@ MonSize = len(np.unique(FD['month'])) * len(np.unique(FD['year']))
 TSmon  = np.ones((MonSize)) * np.nan
 ETSmon = np.ones((MonSize)) * np.nan
 
+TSmonEast  = np.ones((MonSize)) * np.nan
+ETSmonEast = np.ones((MonSize)) * np.nan
+
 mon  = FD['month'][0]
 year = FD['year'][0]
 for m in range(MonSize):
     ind = np.where( (mon == FD['month']) & (year == FD['year']) )[0]
     TSmon[m]  = np.nanmean(TS[ind])
     ETSmon[m] = np.nanmean(ETS[ind])
+    
+    TSmonEast[m]  = np.nanmean(TSeast[ind])
+    ETSmonEast[m] = np.nanmean(ETSeast[ind])
     
     # If the current month averaged over is December, increment the year and reset the month
     if mon == FD['month'][-1]:
@@ -1646,17 +1678,75 @@ YearSize = len(np.unique(FD['year']))
 TSyear  = np.ones((YearSize)) * np.nan
 ETSyear = np.ones((YearSize)) * np.nan
 
+TSyearEast  = np.ones((YearSize)) * np.nan
+ETSyearEast = np.ones((YearSize)) * np.nan
+
 for n, y in enumerate(np.unique(FD['year'])):
     ind = np.where( (FD['month'] >= 4) & (FD['month'] <= 10) & (FD['year'] == y) )[0]
     
     TSyear[n]  = np.nanmean(TS[ind])
     ETSyear[n] = np.nanmean(ETS[ind])
+    
+    TSyearEast[n]  = np.nanmean(TSeast[ind])
+    ETSyearEast[n] = np.nanmean(ETSeast[ind])
+
+
+# Finally, calculate a climatology, the annual average and standard deviation of the threat scores
+ClimSize = int(365/5) # Every pentad in the year (365 days / 5 days)
+
+TSclim  = np.ones((ClimSize)) * np.nan
+ETSclim = np.ones((ClimSize)) * np.nan
+TSstd   = np.ones((ClimSize)) * np.nan
+ETSstd  = np.ones((ClimSize)) * np.nan
+
+TSclimEast  = np.ones((ClimSize)) * np.nan
+ETSclimEast = np.ones((ClimSize)) * np.nan
+TSstdEast   = np.ones((ClimSize)) * np.nan
+ETSstdEast  = np.ones((ClimSize)) * np.nan
+
+
+# Create the pentad datetimes for a year.
+def PentadDateRange(StartDate, EndDate):
+    '''
+    This function takes in two dates and outputs all the dates inbetween
+    those two dates.
+    
+    Inputs:
+        StartDate - A datetime. The starting date of the interval.
+        EndDate - A datetime. The ending date of the interval.
+        
+    Outputs:
+        All dates between StartDate and EndDate (inclusive)
+    '''
+    for n in range(0, int((EndDate - StartDate).days) + 1, 5):
+        yield StartDate + timedelta(n)
+        
+PentadGen = PentadDateRange(datetime(2001, 1, 1), datetime(2001, 12, 31))
+PentadDate = np.asarray([p for p in PentadGen])
+
+for c in range(ClimSize):
+    ind = np.where( (PentadDate[c].month == FD['month']) & (PentadDate[c].day == FD['day']) )[0]
+    
+    print(np.nanmean(ETSeast[ind]))
+    
+    TSclim[c]  = np.nanmean(TS[ind])
+    ETSclim[c] = np.nanmean(ETS[ind])
+    TSstd[c]   = np.nanstd(TS[ind])
+    ETSstd[c]  = np.nanstd(ETS[ind])
+    
+    TSclimEast[c]  = np.nanmean(TSeast[ind])
+    ETSclimEast[c] = np.nanmean(ETSeast[ind])
+    TSstdEast[c]  = np.nanstd(TSeast[ind])
+    ETSstdEast[c] = np.nanstd(ETSeast[ind])
+
 
 #%%
 # cell 38
 # Plot the threat scores
 
-# Create the plot
+# Date format for the tick labels
+DateFMT = DateFormatter('%b')
+
 # Create the figure
 fig = plt.figure(figsize = [18, 10])
 
@@ -1667,33 +1757,108 @@ plt.subplots_adjust(left = 0.05, right = 0.95, bottom = 0.05, top = 0.95, wspace
 
 ax1 = fig.add_subplot(1, 2, 1) # Entry 1 is nrows, entry 2 is ncols, and entry 3 is index
 
-ax1.plot(np.arange(1, YearSize+1), TSyear, 'r-', label = 'TS')
+ax1.set_title('CONUS', fontsize = 18)
+
+#ax1.plot(np.arange(1, YearSize+1), ETSyear, 'r-', label = 'TS')
+ax1.plot(PentadDate, ETSclim, 'r-', label = 'TS')
+ax1.fill_between(PentadDate, ETSclim-ETSstd, ETSclim+ETSstd, alpha = 0.5, edgecolor = 'r', facecolor = 'r')
 
 # Set the axis labels
 ax1.set_xlabel('Time', size = 18)
-ax1.set_ylabel('Threat Score', size = 14)
+ax1.set_ylabel('Equitable Threat Score', size = 18)
 
 # Set the ticks
+ax1.set_ylim([0, 1])
+ax1.xaxis.set_major_formatter(DateFMT)
+
+for i in ax1.xaxis.get_ticklabels() + ax1.yaxis.get_ticklabels():
+    i.set_size(18)
+    
+
+# East of Rocky Mountains Plot
+ax2 = fig.add_subplot(1, 2, 2) # Entry 1 is nrows, entry 2 is ncols, and entry 3 is index
+
+ax2.set_title('"East" of Rocky Mountains', fontsize = 18)
+
+#ax2.plot(np.arange(1, YearSize+1), ETSyearEast, 'r-', label = 'ETS')
+ax2.plot(PentadDate, ETSclimEast, 'r-', label = 'ETS')
+ax2.fill_between(PentadDate, ETSclimEast-ETSstdEast, ETSclimEast+ETSstdEast, alpha = 0.5, edgecolor = 'r', facecolor = 'r')
+
+# Set the axis labels
+ax2.set_xlabel('Time', size = 18)
+ax2.set_ylabel('Equitable Threat Score', size = 18)
+
+# Set the ticks
+ax2.set_ylim([0, 1])
+ax2.xaxis.set_major_formatter(DateFMT)
+
+for i in ax2.xaxis.get_ticklabels() + ax2.yaxis.get_ticklabels():
+    i.set_size(18)
+
+
+plt.show(block = False)
+
+# Save the figure
+plt.savefig('./Figures/Threat_Score_Climatology.png', bbox_inches = 'tight')
+
+
+
+
+
+##### Threat Score across all 40 years #####
+
+# Date format for the tick labels
+DateFMT = DateFormatter('%Y')
+
+# Create the figure
+fig = plt.figure(figsize = [18, 10])
+
+# Adjust some of the figure parameters
+plt.subplots_adjust(left = 0.05, right = 0.95, bottom = 0.05, top = 0.95, wspace = 0.25, hspace = 0.25)
+
+
+# CONUS Plot 
+ax1 = fig.add_subplot(1, 2, 1) # Entry 1 is nrows, entry 2 is ncols, and entry 3 is index
+
+ax1.set_title('CONUS', fontsize = 18)
+
+ax1.plot(np.unique(FD['year']), ETSyear, 'r-', label = 'TS')
+
+# Set the axis labels
+ax1.set_xlabel('Time', size = 18)
+ax1.set_ylabel('Equitable Threat Score', size = 18)
+
+# Set the ticks
+ax1.set_ylim([0, 1])
 #ax1.xaxis.set_major_formatter(DateFMT)
 
 for i in ax1.xaxis.get_ticklabels() + ax1.yaxis.get_ticklabels():
     i.set_size(18)
     
 
-
+# East of Rocky Mountains Plot
 ax2 = fig.add_subplot(1, 2, 2) # Entry 1 is nrows, entry 2 is ncols, and entry 3 is index
 
-ax2.plot(np.arange(1, YearSize+1), ETSyear, 'r-', label = 'ETS')
+ax2.set_title('"East" of Rocky Mountains', fontsize = 18)
+
+ax2.plot(np.unique(FD['year']), ETSyearEast, 'r-', label = 'ETS')
 
 # Set the axis labels
 ax2.set_xlabel('Time', size = 18)
-ax2.set_ylabel('Equitable Threat Score', size = 14)
+ax2.set_ylabel('Equitable Threat Score', size = 18)
 
 # Set the ticks
+ax2.set_ylim([0, 1])
 #ax2.xaxis.set_major_formatter(DateFMT)
 
 for i in ax2.xaxis.get_ticklabels() + ax2.yaxis.get_ticklabels():
     i.set_size(18)
+    
+
+plt.show(block = False)
+
+# Save the figure
+plt.savefig('./Figures/Threat_Score_Time_Series.png', bbox_inches = 'tight')
 
 #%%
 # cell 39
