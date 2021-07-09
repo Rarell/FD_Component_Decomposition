@@ -1796,10 +1796,9 @@ for i in ax2.xaxis.get_ticklabels() + ax2.yaxis.get_ticklabels():
     i.set_size(18)
 
 
-plt.show(block = False)
-
 # Save the figure
 plt.savefig('./Figures/Threat_Score_Climatology.png', bbox_inches = 'tight')
+plt.show(block = False)
 
 
 
@@ -1855,10 +1854,10 @@ for i in ax2.xaxis.get_ticklabels() + ax2.yaxis.get_ticklabels():
     i.set_size(18)
     
 
-plt.show(block = False)
-
 # Save the figure
 plt.savefig('./Figures/Threat_Score_Time_Series.png', bbox_inches = 'tight')
+plt.show(block = False)
+
 
 #%%
 # cell 39
