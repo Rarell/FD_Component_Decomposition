@@ -1423,7 +1423,7 @@ plt.show(block = False)
 # Create a contingency table for the rapid intensification and flash drought
 
 # Note only scenario (rapid intensification occurred, flash drought did not) yields non-zero or non-100% values
-I, J, T = c4['c4'].shape
+I, J, T = FD['FD'].shape
 
 RInd = np.ones((I, J, T)) * np.nan # RInd: Rapid Intensification, no drought occurred
 RId  = np.ones((I, J, T)) * np.nan # RId: Rapid Intensification, drought occurred
