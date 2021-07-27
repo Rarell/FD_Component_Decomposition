@@ -1582,7 +1582,7 @@ def CaseStudyMaps(USDMDates, DI, FCFD, lon, lat, LonMin, LonMax, LatMin, LatMax,
             # For the top row, set the titles
             ax1.set_title('USDM')
             ax2.set_title('DC (C2)')
-            ax3.set_title('FC (C4) and FD')
+            ax3.set_title('RI (C4) and FD')
             
             
             # Set some extra tick parameters
@@ -1689,7 +1689,7 @@ def CaseStudyMaps(USDMDates, DI, FCFD, lon, lat, LonMin, LonMax, LatMin, LatMax,
     cbarfcfd = fig.colorbar(cfc, cax = cbax3, orientation = 'horizontal')
     
     cbarfcfd.set_ticks([2/3+1/3, 4/3+1/3])
-    cbarfcfd.ax.set_xticklabels(['FC', 'FD'], fontsize = 16)
+    cbarfcfd.ax.set_xticklabels(['RI', 'FD'], fontsize = 16)
     
     #fig.tight_layout()
     

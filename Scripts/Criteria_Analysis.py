@@ -652,8 +652,8 @@ usdm03dates = np.asarray([datetime.strptime(date, '%Y-%m-%d') for date in usdm03
 #%%
 # cell 23
 # New and current case studies
-year = 2019
-subset = False
+year = 2012
+subset = True
 
 CaseStudy(c2['c2'], c4['c4'], FD['FD'], DI['DI'], DP['DP'], year, FD['lat'], FD['lon'], FD['ymd'], FD['year'], FD['month'], USDM['ymd'], USDM['year'], USDM['month'], maskSub, subset)
 # CaseStudy(c2['c2'], c4['c4'], FD['FD'], DI['DI'], DP['DP'], year, FD['lat'], FD['lon'], FD['ymd'], FD['year'], FD['month'], usdm03dates, usdm03years, usdm03months, maskSub, subset)
@@ -1396,8 +1396,12 @@ ax4 = fig.add_subplot(2, 2, 4)
 # Plot the rapid intensification and flash drought time series
 ax4.plot(FD['ymd'][tmpind], perFCeast, 'b-.', label = 'Rapid Drying (C4)')
 ax4.fill_between(FD['ymd'][tmpind], perFCeast-FCstdeast, perFCeast+FCstdeast, alpha = 0.5, edgecolor = 'b', facecolor = 'b')
+#ax4.plot(FD['ymd'][tmpind], perFCeast+FCstdeast, 'b--')
+#ax4.plot(FD['ymd'][tmpind], perFCeast-FCstdeast, 'b--')
 ax4.plot(FD['ymd'][tmpind], perFDeast, 'k--', label = 'Flash Drought')
 ax4.fill_between(FD['ymd'][tmpind], perFDeast-FDstdeast, perFDeast+FDstdeast, alpha = 0.5, edgecolor = 'k', facecolor = 'k')
+#ax4.plot(FD['ymd'][tmpind], perFDeast+FDstdeast, 'k--')
+#ax4.plot(FD['ymd'][tmpind], perFDeast-FDstdeast, 'k--')
 
 # Add a legend
 ax4.legend(loc = 'upper right', fontsize = 18)

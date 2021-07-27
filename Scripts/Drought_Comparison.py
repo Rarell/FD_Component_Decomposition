@@ -159,7 +159,7 @@ def WriteNC(var, lat, lon, dates, filename = 'tmp.nc', VarName = 'tmp', VarSName
 # Load the data
 
 # Define some names
-USDMpath = '.Data/Misc_Data/'
+USDMpath = './Data/Misc_Data/'
 USDMfn = 'USDM_grid_all_years.nc'
 USDMname = 'USDM'
 
@@ -387,7 +387,7 @@ PlotStatMap(CovCompDiff, USDM['lon'], USDM['lat'], title = 'Composite Mean Diffe
 
 #%%
 # cell 11
-# Create the truth table maps
+# Create the contingency table maps
 
 # Initialize some variables
 I, J, T = DCcov.shape
@@ -848,7 +848,7 @@ plt.show(block = False)
 
 #%%
 # cell 13
-# Next make the truth table/confusion matrix maps
+# Next make the contingency table/confusion matrix maps
 
 # Lat/Lon tick information
 lat_int = 10
@@ -990,7 +990,7 @@ plt.show(block = False)
 
 #%%
 # cell 14
-# Next make a change confusion matrix plot based on suggestions
+# Next make a change contingency matrix plot based on suggestions
 
 # Lat/Lon tick information
 lat_int = 10
@@ -1113,7 +1113,7 @@ ax3.add_geometries(NonUSGeom, crs = ccrs.PlateCarree(), facecolor = 'white', edg
 ax3.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
 
 # Set a local title
-ax3.set_title('Frequency of False Negative', fontsize = 16)
+ax3.set_title('Frequency of False Negatives', fontsize = 16)
 
 # Set the tick information
 ax3.set_xticks(LonLabel, crs = ccrs.PlateCarree())
