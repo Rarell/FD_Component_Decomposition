@@ -1323,13 +1323,13 @@ ax1.fill_between(FD['ymd'][tmpind], perDC-DCstd, perDC+DCstd, alpha = 0.5, edgec
 
 # Set the axis labels
 ax1.set_xlabel('Time', size = 18)
-ax1.set_ylabel('Percent Areal Coverage (%)', size = 14)
+ax1.set_ylabel('Percent Areal Coverage (%)', size = 18)
 
 # Set the ticks
 ax1.xaxis.set_major_formatter(DateFMT)
 #ax1.set_yticks(np.round(np.arange(21.900, 22.00, 0.020), 2))
-ax1.set_yticks(np.round(np.arange(10.00, 36.00, 5.00), 2))
-ax1.set_ylim([10, 35])
+ax1.set_yticks(np.round(np.arange(0.00, 42.00, 5.00), 2))
+ax1.set_ylim([0, 40])
 
 for i in ax1.xaxis.get_ticklabels() + ax1.yaxis.get_ticklabels():
     i.set_size(18)
@@ -1353,8 +1353,8 @@ ax3.set_ylabel('Percent Areal Coverage (%)', size = 18)
 
 # Set the ticks
 ax3.xaxis.set_major_formatter(DateFMT)
-ax3.set_yticks(np.round(np.arange(0, 2.6, 0.5), 1))
-ax3.set_ylim([0, 2.5])
+ax3.set_yticks(np.round(np.arange(0, 5.1, 0.5), 1))
+ax3.set_ylim([0, 4.0])
 
 for i in ax3.xaxis.get_ticklabels() + ax3.yaxis.get_ticklabels():
     i.set_size(18)
@@ -1382,8 +1382,8 @@ ax2.set_ylabel('Percent Areal Coverage (%)', size = 18)
 # Set the ticks
 ax2.xaxis.set_major_formatter(DateFMT)
 #ax2.set_yticks(np.round(np.arange(21.630, 21.675, 0.01), 2))
-ax2.set_yticks(np.round(np.arange(10.00, 36.00, 5.00), 2))
-ax2.set_ylim([10, 35])
+ax2.set_yticks(np.round(np.arange(0.00, 42.00, 5.00), 2))
+ax2.set_ylim([0, 40])
 
 for i in ax2.xaxis.get_ticklabels() + ax2.yaxis.get_ticklabels():
     i.set_size(18)
@@ -1411,8 +1411,8 @@ ax4.set_ylabel('Percent Areal Coverage (%)', size = 18)
 
 # Set the ticks
 ax4.xaxis.set_major_formatter(DateFMT)
-ax4.set_yticks(np.round(np.arange(0, 2.6, 0.5), 1))
-ax4.set_ylim([0, 2.5])
+ax4.set_yticks(np.round(np.arange(0, 5.1, 0.5), 1))
+ax4.set_ylim([0, 4.0])
 
 for i in ax4.xaxis.get_ticklabels() + ax4.yaxis.get_ticklabels():
     i.set_size(18)
