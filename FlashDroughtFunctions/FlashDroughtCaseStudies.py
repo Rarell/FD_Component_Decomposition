@@ -1351,7 +1351,9 @@ def CaseStudyMaps(USDMDates, DI, FCFD, lon, lat, LonMin, LonMax, LatMin, LatMax,
     USDMmin = -1; USDMmax = 5; USDMint = 1
     USDMlevs = np.arange(USDMmin, USDMmax + USDMint, USDMint)
     USDMnlevs = len(USDMlevs)
-    USDMcmap = mcolors.LinearSegmentedColormap.from_list('DMcmap', ['white', '#FFFF00', '#FCD37F', '#FFAA00', '#E60000', '#730000'], N = 6)
+    cmap_list = ['white', '#FFFF00', '#FCD37F', '#FFAA00', '#E60000', '#730000']
+    USDMnorm = mcolors.Normalize(vmin = USDMmin, vmax = USDMmax)
+    USDMcmap = mcolors.LinearSegmentedColormap.from_list('USDMcmap', cmap_list, N = 6)
     
     # Drought component color information
     DCmin = 0; DCmax = 4; DCint = 1
@@ -1478,7 +1480,11 @@ def CaseStudyMaps(USDMDates, DI, FCFD, lon, lat, LonMin, LonMax, LatMin, LatMax,
         # Plot the USDM polygons
         csf = shpreader.Reader(path + DirectoryName + SHPname)
         
-        for rec, geo in zip(csf.records(), csf.geometries()):
+        recs = [rec for rec in csf.records()]
+        geoms = [geom for geom in csf.geometries()]
+        
+        
+        for (rec, geo) in zip(recs, geoms):
             DM = rec.attributes['DM']#.decode('latin-1')
             
             if DM == 0:
@@ -1501,7 +1507,7 @@ def CaseStudyMaps(USDMDates, DI, FCFD, lon, lat, LonMin, LonMax, LatMin, LatMax,
                 #facecolor = (0.451, 0, 0, 0.549)
                 facecolor = '#730000'
                 order = 5
-            ax1.add_geometries([geo], ccrs.PlateCarree(), facecolor = facecolor, edgecolor = facecolor, zorder = 1)
+            cusdm = ax1.add_geometries([geo], ccrs.PlateCarree(), facecolor = facecolor, edgecolor = facecolor, zorder = 1)
         
         # Ocean and non-U.S. countries covers and "masks" data outside the U.S.
         ax1.add_feature(cfeature.OCEAN, facecolor = 'white', edgecolor = 'white', zorder = 2)
@@ -1581,7 +1587,7 @@ def CaseStudyMaps(USDMDates, DI, FCFD, lon, lat, LonMin, LonMax, LatMin, LatMax,
         if m == 0:
             # For the top row, set the titles
             ax1.set_title('USDM')
-            ax2.set_title('DC (C2)')
+            ax2.set_title('Drought Intensity')
             ax3.set_title('RI (C4) and FD')
             
             
@@ -1671,8 +1677,10 @@ def CaseStudyMaps(USDMDates, DI, FCFD, lon, lat, LonMin, LonMax, LatMin, LatMax,
         
         cbax3 = fig.add_axes([0.650, 0.25, 0.25, 0.015])
     
-    # USDM colorbar
-    cbarusdm = mcolorbar.ColorbarBase(ax = cbax, cmap = USDMcmap, boundaries = USDMlevs, orientation = 'horizontal')
+    # USDM colorbar 
+    cbarusdm = mcolorbar.ColorbarBase(ax = cbax, cmap = USDMcmap, norm = USDMnorm, boundaries = USDMlevs, orientation = 'horizontal')
+    # print(cmap_list)
+    # print(USDMcmap._segmentdata)
     
     cbarusdm.set_ticks([-0.5, 0.5, 1.5, 2.5, 3.5, 4.5], update_ticks = True)
     cbarusdm.ax.set_xticklabels(['ND', 'D0', 'D1', 'D2', 'D3', 'D4'])

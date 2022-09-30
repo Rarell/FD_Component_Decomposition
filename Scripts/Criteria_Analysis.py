@@ -6,7 +6,7 @@ Created on Mon Mar  2 13:37:18 2020
 @author: stuartedris
 
 This scripts performs the main analyses and produces the majority of the figures
-for the Decomposing the Critical Components of Flash Drought Using the Standardized 
+for the Analysis the Critical Components of Flash Drought Using the Standardized 
 Evaporative Stress Ratio paper. The script uses the criteria, percentile, and
 flash drought data produced by the Flash_Drought_Criteria_Analysis script and
 performs the analysis calculations for the case studies and rapid intensification
@@ -610,7 +610,7 @@ maskSub, LatSub, LonSub = SubsetData(maskNew, lat, lon, LatMin = LatMin, LatMax 
 #######################
 
 # Early case studies
-year = 2016
+year = 2011
 subset = True   
     
 EarlyCaseStudy(c1['c1'], c2['c2'], c4['c4'], FD['FD'], FD['lon'], FD['lat'], FD['month'],
@@ -652,7 +652,7 @@ usdm03dates = np.asarray([datetime.strptime(date, '%Y-%m-%d') for date in usdm03
 #%%
 # cell 23
 # New and current case studies
-year = 2012
+year = 2011
 subset = True
 
 CaseStudy(c2['c2'], c4['c4'], FD['FD'], DI['DI'], DP['DP'], year, FD['lat'], FD['lon'], FD['ymd'], FD['year'], FD['month'], USDM['ymd'], USDM['year'], USDM['month'], maskSub, subset)
